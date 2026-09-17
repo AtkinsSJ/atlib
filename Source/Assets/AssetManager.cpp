@@ -15,12 +15,12 @@ namespace Assets {
 
 AssetManager* s_assets;
 
-void initAssets()
+void initAssets(String assets_directory)
 {
     s_assets = MemoryArena::bootstrap<AssetManager>("Assets"_s);
 
     String basePath = String::from_null_terminated(SDL_GetBasePath());
-    s_assets->assetsPath = s_assets->assetStrings.intern(constructPath({ basePath, "assets"_s }));
+    s_assets->assetsPath = s_assets->assetStrings.intern(constructPath({ basePath, assets_directory }));
 
     // NB: The arena block size is 1MB currently, so make sure that this number * sizeof(Asset) is less than that!
     // (Otherwise, we waste a LOT of memory with almost-empty memory blocks.)

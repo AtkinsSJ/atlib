@@ -118,7 +118,7 @@ private:
     Locale m_locale { Locale::En };
 };
 
-void initAssets();
+void initAssets(String assets_directory = "assets"_s);
 AssetManager& asset_manager();
 
 void loadAsset(AssetMetadata* metadata);
