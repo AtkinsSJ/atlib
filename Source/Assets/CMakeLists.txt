@@ -6,3 +6,4 @@ add_library(Assets STATIC
         Texts.cpp
 )
 target_include_directories(Assets PUBLIC "..")
+target_link_libraries(Assets PRIVATE IO Settings Util)

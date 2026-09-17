@@ -5,7 +5,6 @@
  */
 
 #include <Assets/AssetManager.h>
-#include <Debug/Debug.h>
 #include <Util/Log.h>
 #include <Util/StringBuilder.h>
 #include <Util/Time.h>
@@ -79,8 +78,6 @@ DateTime DateTime::from_unix_timestamp(u64 unix_timestamp)
 
 String formatDateTime(DateTime dateTime, DateTimeFormat format)
 {
-    DEBUG_FUNCTION();
-
     String formatString = {};
 
     switch (format) {

@@ -9,3 +9,4 @@ add_library(UI STATIC
         Window.cpp
 )
 target_include_directories(UI PUBLIC "..")
+target_link_libraries(UI PRIVATE Assets Debug Gfx Input Util)

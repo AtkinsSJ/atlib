@@ -29,3 +29,5 @@ add_library(Util STATIC
         Vector.cpp
 )
 target_include_directories(Util PUBLIC "..")
+# FIXME: Remove this IO dependency! I think it's just LineReader, so replace that with Lexer. 
+target_link_libraries(Util PRIVATE IO)

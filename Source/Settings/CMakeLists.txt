@@ -4,3 +4,4 @@ add_library(Settings STATIC
         SettingsState.cpp
 )
 target_include_directories(Settings PUBLIC "..")
+target_link_libraries(Settings PRIVATE Assets IO UI Util)

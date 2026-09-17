@@ -22,4 +22,5 @@ find_package(SDL2 REQUIRED)
 find_package(SDL2_image REQUIRED)
 target_include_directories(Gfx PRIVATE ${OPENGL_INCLUDE_DIRS} ${GLEW_INCLUDE_DIRS} ${SDL2_INCLUDE_DIRS} ${SDL2_IMAGE_INCLUDE_DIRS})
 
-target_link_libraries(Gfx PRIVATE Assets ${OPENGL_LIBRARIES} ${GLEW_LIBRARIES} ${SDL2_LIBRARIES} SDL2_image::SDL2_image)
+target_link_libraries(Gfx PRIVATE Assets Debug IO Settings Util
+        ${OPENGL_LIBRARIES} ${GLEW_LIBRARIES} ${SDL2_LIBRARIES} SDL2_image::SDL2_image)
