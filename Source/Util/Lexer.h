@@ -31,10 +31,19 @@ public:
     {
         auto const old_position = m_position;
         auto result = callback(*this);
-        if (result.has_value())
-            return result;
-        m_position = old_position;
-        return {};
+        if (!result.has_value())
+            m_position = old_position;
+        return result;
+    }
+
+    template<typename Result, typename Callback>
+    ErrorOr<Result> consume_with_callback_or_error(Callback const& callback)
+    {
+        auto const old_position = m_position;
+        auto result = callback(*this);
+        if (result.is_error())
+            m_position = old_position;
+        return result;
     }
 
     // More specific functions
