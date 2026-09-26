@@ -7,6 +7,7 @@
 #include "Texts.h"
 #include <Assets/AssetManager.h>
 #include <IO/LineReader.h>
+#include <Util/Lexer.h>
 #include <Util/StringBuilder.h>
 
 namespace Assets {
@@ -37,14 +38,24 @@ ErrorOr<OwnedRef<Texts>> Texts::load(AssetMetadata& metadata, Blob file_data, bo
     char* write_position = reinterpret_cast<char*>(text_data.writable_data());
 
     while (reader.load_next_line()) {
-        auto input_key = reader.next_token();
-        if (!input_key.has_value())
+        Lexer lexer { reader.current_line() };
+
+        auto maybe_input_key = lexer.consume_token();
+        lexer.discard_whitespace();
+        if (!maybe_input_key.has_value())
             continue;
-        auto input_text = reader.remainder_of_current_line();
+        auto input_key = maybe_input_key.release_value();
+
+        auto maybe_input_text = lexer.consume_remainder();
+        if (!maybe_input_text.has_value()) {
+            reader.warn("Text asset with key '{}' has no text."_s, { input_key });
+            continue;
+        }
+        auto input_text = maybe_input_text.release_value();
 
         // Store the key
-        string_data_builder.append(input_key.value());
-        String key { write_position, input_key.value().length() };
+        string_data_builder.append(input_key);
+        String key { write_position, input_key.length() };
         write_position += key.length();
 
         // Store the text
