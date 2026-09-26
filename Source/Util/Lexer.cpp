@@ -62,6 +62,15 @@ bool Lexer::consume_specific(StringView const expected)
     return true;
 }
 
+Optional<StringView> Lexer::consume_remainder()
+{
+    if (!has_next())
+        return {};
+    auto result = m_input.substring(m_position);
+    m_position = m_input.length();
+    return result;
+}
+
 Optional<StringView> Lexer::consume_until(char const end)
 {
     return consume_until([end](char const c) { return c == end; });

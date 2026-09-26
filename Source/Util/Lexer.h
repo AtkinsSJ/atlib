@@ -22,6 +22,7 @@ public:
     Optional<char> consume();
     bool consume_specific(char);
     bool consume_specific(StringView);
+    Optional<StringView> consume_remainder();
     Optional<StringView> consume_until(char end);
     Optional<StringView> consume_until(Function<bool(char)> const&);
     Optional<StringView> consume_while(Function<bool(char)> const&);
