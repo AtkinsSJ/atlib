@@ -51,12 +51,13 @@ struct DrawableStyle {
 
     Variant<Empty, Colour, Gradient, Ninepatch, Sprite> value {};
 
+    static ErrorOr<DrawableStyle> read(Lexer&);
+
     // METHODS
     bool has_fixed_size() const;
     V2I get_size() const; // NB: Returns 0 for sizeless types
     bool is_visible() const;
 };
-Optional<DrawableStyle> readDrawableStyle(LineReader* reader);
 
 enum class StyleType : u8 {
     None,
@@ -383,10 +384,10 @@ enum class PropType : u8 {
     Float,
     Font,
     Int,
+    IntPosition,
+    IntSize,
     Padding,
-    String,
     Style,
-    V2I,
     COUNT
 };
 

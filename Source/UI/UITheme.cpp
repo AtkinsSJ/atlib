@@ -9,73 +9,92 @@
 #include <Gfx/BitmapFont.h>
 #include <IO/LineReader.h>
 #include <UI/UITheme.h>
+#include <Util/Lexer.h>
 
 namespace UI {
 
 static HashMap<String, Property> s_style_properties { 256 };
 static HashMap<String, StyleType> s_style_types_by_name { 256 };
 
-Optional<DrawableStyle> readDrawableStyle(LineReader* reader)
+ErrorOr<DrawableStyle> DrawableStyle::read(Lexer& lexer)
 {
-    auto maybe_type_name = reader->next_token();
-    if (!maybe_type_name.has_value()) {
-        reader->error("Missing drawable type name"_s);
-        return {};
-    }
-    auto typeName = maybe_type_name.release_value();
-    Optional<DrawableStyle> result;
+    return lexer.consume_with_callback_or_error<DrawableStyle>([](Lexer& lexer) -> ErrorOr<DrawableStyle> {
+        lexer.discard_whitespace();
+        auto maybe_type_name = lexer.consume_token();
+        if (!maybe_type_name.has_value())
+            return "Missing drawable type name"_s;
+        auto type_name = maybe_type_name.release_value();
+        lexer.discard_whitespace();
 
-    if (typeName == "none"_s) {
-        result = DrawableStyle {};
-    } else if (typeName == "color"_s) {
-        Optional color = Colour::read(*reader);
-        if (color.has_value())
-            result = DrawableStyle { color.release_value() };
-    } else if (typeName == "gradient"_s) {
-        Optional color00 = Colour::read(*reader);
-        Optional color01 = Colour::read(*reader);
-        Optional color10 = Colour::read(*reader);
-        Optional color11 = Colour::read(*reader);
+        if (type_name == "none"_s)
+            return DrawableStyle {};
 
-        if (color00.has_value() && color01.has_value() && color10.has_value() && color11.has_value()) {
-            result = DrawableStyle { DrawableStyle::Gradient {
+        if (type_name == "color"_s) {
+            auto colour = Colour::read(lexer);
+            lexer.discard_whitespace();
+            if (colour.is_error())
+                return colour.release_error();
+            return DrawableStyle { colour.release_value() };
+        }
+
+        if (type_name == "gradient"_s) {
+            auto color00 = Colour::read(lexer);
+            lexer.discard_whitespace();
+            auto color01 = Colour::read(lexer);
+            lexer.discard_whitespace();
+            auto color10 = Colour::read(lexer);
+            lexer.discard_whitespace();
+            auto color11 = Colour::read(lexer);
+            lexer.discard_whitespace();
+
+            if (color00.is_error() || color01.is_error() || color10.is_error() || color11.is_error())
+                return "`gradient` drawable requires 4 colours"_s;
+            return DrawableStyle { DrawableStyle::Gradient {
                 .color00 = color00.release_value(),
                 .color01 = color01.release_value(),
                 .color10 = color10.release_value(),
                 .color11 = color11.release_value(),
             } };
         }
-    } else if (typeName == "ninepatch"_s) {
-        auto ninepatchName = reader->next_token();
-        if (!ninepatchName.has_value()) {
-            reader->error("Missing name for `ninepatch` drawable"_s);
-            return {};
+
+        if (type_name == "ninepatch"_s) {
+            auto ninepatch_name = lexer.consume_token();
+            if (!ninepatch_name.has_value())
+                return "Missing name for `ninepatch` drawable"_s;
+            lexer.discard_whitespace();
+
+            auto maybe_colour = Colour::read(lexer);
+            lexer.discard_whitespace();
+            auto colour = Colour::white();
+            if (!maybe_colour.is_error())
+                colour = maybe_colour.release_value();
+
+            return DrawableStyle { DrawableStyle::Ninepatch {
+                .ref = TypedAssetRef<::Ninepatch> { asset_manager().assetStrings.intern(ninepatch_name.value()) },
+                .colour = colour,
+            } };
         }
 
-        auto color = Colour::read(*reader, LineReader::IsRequired::No);
+        if (type_name == "sprite"_s) {
+            auto sprite_name = lexer.consume_token();
+            if (!sprite_name.has_value())
+                return "Missing name for `sprite` drawable"_s;
+            lexer.discard_whitespace();
 
-        result = DrawableStyle { DrawableStyle::Ninepatch {
-            .ref = TypedAssetRef<Ninepatch> { asset_manager().assetStrings.intern(ninepatchName.value()) },
-            .colour = color.value_or(Colour::white()),
-        } };
-    } else if (typeName == "sprite"_s) {
-        auto spriteName = reader->next_token();
-        if (!spriteName.has_value()) {
-            reader->error("Missing name for `sprite` drawable"_s);
-            return {};
+            auto maybe_colour = Colour::read(lexer);
+            lexer.discard_whitespace();
+            auto colour = Colour::white();
+            if (!maybe_colour.is_error())
+                colour = maybe_colour.release_value();
+
+            return DrawableStyle { DrawableStyle::Sprite {
+                .ref = SpriteRef { asset_manager().assetStrings.intern(sprite_name.value()), 0 },
+                .colour = colour,
+            } };
         }
 
-        auto color = Colour::read(*reader, LineReader::IsRequired::No);
-
-        result = DrawableStyle { DrawableStyle::Sprite {
-            .ref = SpriteRef { asset_manager().assetStrings.intern(spriteName.value()), 0 },
-            .colour = color.value_or(Colour::white()),
-        } };
-    } else {
-        reader->error("Unrecognised drawable type '{0}'"_s, { typeName });
-    }
-
-    return result;
+        return "Unrecognized drawable type"_s;
+    });
 }
 
 bool DrawableStyle::has_fixed_size() const
@@ -309,19 +328,19 @@ void initStyleConstants()
     PROP(checkHover, Drawable);
     PROP(checkPressed, Drawable);
     PROP(checkboxStyle, Style);
-    PROP(checkSize, V2I);
+    PROP(checkSize, IntSize);
     PROP(dot, Drawable);
     PROP(dotDisabled, Drawable);
     PROP(dotHover, Drawable);
     PROP(dotPressed, Drawable);
-    PROP(dotSize, V2I);
+    PROP(dotSize, IntSize);
     PROP(contentPadding, Int);
     PROP(dropDownListStyle, Style);
     PROP(endIcon, Drawable);
     PROP(endIconAlignment, Alignment);
     PROP(font, Font);
     PROP(labelStyle, Style);
-    PROP(offsetFromMouse, V2I);
+    PROP(offsetFromMouse, IntPosition);
     PROP(outputTextColor, Color);
     PROP(outputTextColorInputEcho, Color);
     PROP(outputTextColorError, Color);
@@ -332,7 +351,7 @@ void initStyleConstants()
     PROP(radioButtonStyle, Style);
     PROP(scrollbarStyle, Style);
     PROP(showCaret, Bool);
-    PROP(size, V2I);
+    PROP(size, IntSize);
     PROP(sliderStyle, Style);
     PROP(startIcon, Drawable);
     PROP(startIconAlignment, Alignment);
@@ -352,7 +371,7 @@ void initStyleConstants()
     PROP(widgetAlignment, Alignment);
     PROP(width, Int);
     PROP(track, Drawable);
-    PROP(thumbSize, V2I);
+    PROP(thumbSize, IntSize);
 
 #undef PROP
 
@@ -505,36 +524,38 @@ ErrorOr<OwnedRef<Asset>> load_theme(AssetMetadata& metadata, Blob data)
     Style* target = nullptr;
 
     while (reader.load_next_line()) {
-        auto maybe_first_word = reader.next_token();
-        if (!maybe_first_word.has_value())
-            continue;
-        auto firstWord = maybe_first_word.release_value();
+        Lexer lexer { reader.current_line() };
 
-        if (firstWord.starts_with(':')) {
-            // define an item
-            firstWord = firstWord.substring(1);
-            currentSection = firstWord;
+        // Commands
+        if (lexer.consume_specific(':')) {
+            // Define something
+            auto maybe_command = lexer.consume_token();
+            if (!maybe_command.has_value())
+                return reader.make_error_message("Invalid command"_s);
+            auto command = maybe_command.release_value();
+            lexer.discard_whitespace();
 
-            if (firstWord == "Font"_s) {
+            if (command == "Font"_s) {
                 target = nullptr;
-                auto fontName = reader.next_token();
-                auto fontFilename = reader.remainder_of_current_line();
+                auto font_name = lexer.consume_token();
+                lexer.discard_whitespace();
+                auto font_filename = lexer.consume_token();
+                lexer.discard_whitespace();
 
-                if (fontName.has_value() && !fontFilename.is_empty()) {
-                    AssetMetadata* fontAsset = asset_manager().add_asset(BitmapFont::asset_type(), fontFilename);
-                    fontNamesToAssetNames.set(fontName.value().deprecated_to_string(), fontAsset->shortName);
-                } else {
-                    reader.error("Invalid font declaration: '{0}'"_s, { reader.current_line() });
-                }
+                if (!font_name.has_value() || !font_filename.has_value() || lexer.has_next())
+                    return reader.make_error_message("Invalid font command: Expected `:Font NAME PATH`"_s);
+
+                AssetMetadata* font_asset = asset_manager().add_asset(BitmapFont::asset_type(), font_filename.value());
+                fontNamesToAssetNames.set(font_name.value().deprecated_to_string(), font_asset->shortName);
+
             } else {
                 // Create a new style entry if the name matches a style type
-                if (auto found_style_type = s_style_types_by_name.get(firstWord.deprecated_to_string()); found_style_type.has_value()) {
+                if (auto found_style_type = s_style_types_by_name.get(command.deprecated_to_string()); found_style_type.has_value()) {
                     auto style_type = found_style_type.release_value();
-                    auto name_token = reader.next_token();
-                    if (!name_token.has_value()) {
-                        reader.error("Missing name for `{}`"_s, { firstWord });
-                        continue;
-                    }
+                    auto name_token = lexer.consume_token();
+                    lexer.discard_whitespace();
+                    if (!name_token.has_value() || lexer.has_next())
+                        return reader.make_error_message("Invalid `{0}` command: Expected `:{0} NAME`"_s, { command });
 
                     String name = asset_manager().assetStrings.intern(name_token.value());
 
@@ -545,128 +566,169 @@ ErrorOr<OwnedRef<Asset>> load_theme(AssetMetadata& metadata, Blob data)
 
                     style_count[style_type]++;
                 } else {
-                    reader.error("Unrecognized command: '{0}'"_s, { firstWord });
+                    return reader.make_error_message("Unrecognized command: '{0}'"_s, { command });
                 }
             }
-        } else {
-            // Properties of the item
-            // These are arranged alphabetically
-            if (firstWord == "extends"_s) {
-                // Clones an existing style
-                auto parent_style_token = reader.next_token();
-                if (!parent_style_token.has_value()) {
-                    reader.error("Missing style name for `extends`"_s);
-                    continue;
-                }
-                auto parent_style = parent_style_token.release_value().deprecated_to_string();
-                auto parentPack = styles.get(parent_style);
-                if (!parentPack.has_value()) {
-                    reader.error("Unable to find style named '{0}'"_s, { parent_style });
-                } else {
-                    Style const& parent = parentPack.value()[target->type];
-                    // For undefined styles, the parent struct will be all nulls, so the type will not match
-                    if (parent.type != target->type) {
-                        reader.error("Attempting to extend a style of the wrong type."_s);
+            continue;
+        }
+
+        // Properties of the item
+        // These are arranged alphabetically
+        auto maybe_property = lexer.consume_token();
+        if (!maybe_property.has_value())
+            continue;
+        auto property_name = maybe_property.release_value();
+        lexer.discard_whitespace();
+
+        if (property_name == "extends"_s) {
+            // Clones an existing style
+            auto parent_style_token = lexer.consume_token();
+            lexer.discard_whitespace();
+            if (!parent_style_token.has_value())
+                return reader.make_error_message("Missing style name for `extends`"_s);
+            if (lexer.has_next())
+                return reader.make_error_message("Unexpected trailing text"_s);
+
+            auto parent_style = parent_style_token.release_value().deprecated_to_string();
+            auto parent_pack = styles.get(parent_style);
+            if (!parent_pack.has_value())
+                return reader.make_error_message("Unable to find style named '{0}'"_s, { parent_style });
+
+            Style const& parent = parent_pack.value()[target->type];
+            // For undefined styles, the parent struct will be all nulls, so the type will not match
+            if (parent.type != target->type)
+                return reader.make_error_message("Attempting to extend a style of the wrong type."_s);
+
+            String name = target->name;
+            *target = parent;
+            target->name = name;
+            continue;
+        }
+
+        // Check our properties map for a match
+        if (auto property = s_style_properties.get(property_name.deprecated_to_string()); property.has_value()) {
+            if (property->existsInStyle[target->type]) {
+                switch (property->type) {
+                case PropType::Alignment: {
+                    auto value = Alignment::read(lexer);
+                    lexer.discard_whitespace();
+                    if (value.is_error())
+                        return reader.make_error_message("Couldn't parse value of {0}: {1}"_s, { property_name, value.release_error() });
+                    if (lexer.has_next())
+                        return reader.make_error_message("Couldn't parse value of {0}: Expected an alignment"_s, { property_name });
+
+                    target->set_property(property_name, value.release_value());
+                } break;
+
+                case PropType::Bool: {
+                    auto value = lexer.consume_bool();
+                    lexer.discard_whitespace();
+                    if (!value.has_value() || lexer.has_next())
+                        return reader.make_error_message("Couldn't parse value of {0}: Expected a boolean"_s, { property_name });
+
+                    target->set_property(property_name, value.release_value());
+                } break;
+
+                case PropType::Color: {
+                    auto value = Colour::read(lexer);
+                    lexer.discard_whitespace();
+                    if (value.is_error())
+                        return reader.make_error_message("Couldn't parse value of {0}: {1}"_s, { property_name, value.release_error() });
+                    if (lexer.has_next())
+                        return reader.make_error_message("Couldn't parse value of {0}: Expected a colour"_s, { property_name });
+
+                    target->set_property(property_name, value.release_value());
+                } break;
+
+                case PropType::Drawable: {
+                    auto value = DrawableStyle::read(lexer);
+                    lexer.discard_whitespace();
+                    if (value.is_error())
+                        return reader.make_error_message("Couldn't parse value of {0}: {1}"_s, { property_name, value.release_error() });
+                    if (lexer.has_next())
+                        return reader.make_error_message("Couldn't parse value of {0}: Expected a drawable"_s, { property_name });
+
+                    target->set_property(property_name, value.release_value());
+                } break;
+
+                case PropType::Float: {
+                    auto value = lexer.consume_float<float>();
+                    lexer.discard_whitespace();
+                    if (!value.has_value() || lexer.has_next())
+                        return reader.make_error_message("Couldn't parse value of {0}: Expected a number"_s, { property_name });
+
+                    target->set_property(property_name, value.release_value());
+                } break;
+
+                case PropType::Font: {
+                    auto name_token = lexer.consume_token();
+                    lexer.discard_whitespace();
+                    if (!name_token.has_value() || lexer.has_next())
+                        return reader.make_error_message("Couldn't parse value of {0}: Expected a font name"_s, { property_name });
+
+                    String value = asset_manager().assetStrings.intern(name_token.value());
+                    if (auto fontFilename = fontNamesToAssetNames.get(value); fontFilename.has_value()) {
+                        target->set_property(property_name, fontFilename.value());
                     } else {
-                        String name = target->name;
-                        *target = parent;
-                        target->name = name;
+                        return reader.make_error_message("Unrecognised font name '{0}'. Make sure to declare the :Font before it is used!"_s, { value });
                     }
+                } break;
+
+                case PropType::Int: {
+                    auto value = lexer.consume_int<s32>();
+                    lexer.discard_whitespace();
+                    if (!value.has_value() || lexer.has_next())
+                        return reader.make_error_message("Couldn't parse value of {0}: Expected an integer"_s, { property_name });
+
+                    target->set_property(property_name, value.release_value());
+                } break;
+
+                case PropType::IntPosition: {
+                    auto value = V2I::read_position(lexer);
+                    lexer.discard_whitespace();
+                    if (!value.has_value() || lexer.has_next())
+                        return reader.make_error_message("Couldn't parse value of {0}: Expected an integer position"_s, { property_name });
+
+                    target->set_property(property_name, value.release_value());
+                } break;
+
+                case PropType::IntSize: {
+                    auto value = V2I::read_size(lexer);
+                    lexer.discard_whitespace();
+                    if (!value.has_value() || lexer.has_next())
+                        return reader.make_error_message("Couldn't parse value of {0}: Expected an integer size"_s, { property_name });
+
+                    target->set_property(property_name, value.release_value());
+                } break;
+
+                case PropType::Padding: {
+                    auto value = Padding::read(lexer);
+                    lexer.discard_whitespace();
+                    if (!value.has_value() || lexer.has_next())
+                        return reader.make_error_message("Couldn't parse value of {0}: Expected a padding value (1 to 4 integers)"_s, { property_name });
+
+                    target->set_property(property_name, value.release_value());
+                } break;
+
+                case PropType::Style: {
+                    auto name_token = lexer.consume_token();
+                    lexer.discard_whitespace();
+                    if (!name_token.has_value() || lexer.has_next())
+                        return reader.make_error_message("Couldn't parse value of {0}: Expected a style name"_s, { property_name });
+
+                    String value = asset_manager().assetStrings.intern(name_token.value());
+                    // Strings are read directly, so we don't need an if(valid) check
+                    target->set_property(property_name, value);
+                } break;
+
+                default:
+                    logCritical("Invalid property type for '{0}'"_s, { property_name });
                 }
             } else {
-                // Check our properties map for a match
-                auto property_name = firstWord.deprecated_to_string();
-                if (auto property = s_style_properties.get(property_name); property.has_value()) {
-                    if (property->existsInStyle[target->type]) {
-                        switch (property->type) {
-                        case PropType::Alignment: {
-                            if (auto value = Alignment::read(reader); value.has_value()) {
-                                target->set_property(property_name, value.release_value());
-                            }
-                        } break;
-
-                        case PropType::Bool: {
-                            if (auto value = reader.read_bool(); value.has_value()) {
-                                target->set_property(property_name, value.release_value());
-                            }
-                        } break;
-
-                        case PropType::Color: {
-                            if (Optional value = Colour::read(reader); value.has_value()) {
-                                target->set_property(property_name, value.release_value());
-                            }
-                        } break;
-
-                        case PropType::Drawable: {
-                            Optional<DrawableStyle> value = readDrawableStyle(&reader);
-                            if (value.has_value()) {
-                                target->set_property(property_name, value.release_value());
-                            }
-                        } break;
-
-                        case PropType::Float: {
-                            if (auto value = reader.read_float(); value.has_value()) {
-                                target->set_property(property_name, value.release_value());
-                            }
-                        } break;
-
-                        case PropType::Font: {
-                            auto name_token = reader.next_token();
-                            if (!name_token.has_value()) {
-                                reader.error("Missing font name in `{}`"_s, { property_name });
-                                continue;
-                            }
-                            String value = asset_manager().assetStrings.intern(name_token.value());
-                            if (auto fontFilename = fontNamesToAssetNames.get(value); fontFilename.has_value()) {
-                                target->set_property(property_name, fontFilename.value());
-                            } else {
-                                reader.error("Unrecognised font name '{0}'. Make sure to declare the :Font before it is used!"_s, { value });
-                            }
-                        } break;
-
-                        case PropType::Int: {
-                            if (auto value = reader.read_int<s32>(); value.has_value()) {
-                                target->set_property(property_name, value.release_value());
-                            }
-                        } break;
-
-                        case PropType::Padding: {
-                            if (auto value = Padding::read(reader); value.has_value()) {
-                                target->set_property(property_name, value.release_value());
-                            }
-                        } break;
-
-                        case PropType::Style: // NB: Style names are just Strings now
-                        case PropType::String: {
-                            auto string_token = reader.next_token();
-                            if (!string_token.has_value()) {
-                                reader.error("Missing string in `{}`"_s, { property_name });
-                                continue;
-                            }
-                            String value = asset_manager().assetStrings.intern(string_token.value());
-                            // Strings are read directly, so we don't need an if(valid) check
-                            target->set_property(property_name, value);
-                        } break;
-
-                        case PropType::V2I: {
-                            auto offsetX = reader.read_int<s32>();
-                            auto offsetY = reader.read_int<s32>();
-                            if (offsetX.has_value() && offsetY.has_value()) {
-                                V2I vector = v2i(offsetX.value(), offsetY.value());
-                                target->set_property(property_name, vector);
-                            }
-                        } break;
-
-                        default:
-                            logCritical("Invalid property type for '{0}'"_s, { property_name });
-                        }
-                    } else {
-                        reader.error("Property '{0}' is not allowed in '{1}'"_s, { property_name, currentSection });
-                    }
-                } else {
-                    reader.error("Unrecognized property '{0}'"_s, { property_name });
-                }
+                return reader.make_error_message("Property '{0}' is not allowed in '{1}'"_s, { property_name, currentSection });
             }
+        } else {
+            return reader.make_error_message("Unrecognized property '{0}'"_s, { property_name });
         }
     }
 
@@ -712,10 +774,10 @@ ErrorOr<OwnedRef<Asset>> load_theme(AssetMetadata& metadata, Blob data)
                     auto background_disabled = style->get_drawable_style("backgroundDisabled"_h, background);
 
                     if (!start_icon.has_fixed_size())
-                        reader.error("Start icon for button '{0}' has no fixed size. Defaulting to 0 x 0"_s, { style->name });
+                        return reader.make_error_message("Start icon for button '{0}' has no fixed size. Defaulting to 0 x 0"_s, { style->name });
 
                     if (!end_icon.has_fixed_size())
-                        reader.error("End icon for button '{0}' has no fixed size. Defaulting to 0 x 0"_s, { style->name });
+                        return reader.make_error_message("End icon for button '{0}' has no fixed size. Defaulting to 0 x 0"_s, { style->name });
 
                     AssetMetadata* child_metadata = asset_manager().add_asset(ButtonStyle::asset_type(), style->name, {});
                     child_metadata->loaded_asset = adopt_own(*new ButtonStyle(
@@ -746,7 +808,7 @@ ErrorOr<OwnedRef<Asset>> load_theme(AssetMetadata& metadata, Blob data)
                     } else if (check.has_fixed_size()) {
                         check_size = check.get_size();
                     } else {
-                        reader.error("Check for checkbox '{0}' has no fixed size, and no checkSize was provided. Defaulting to 0 x 0"_s, { style->name });
+                        return reader.make_error_message("Check for checkbox '{0}' has no fixed size, and no checkSize was provided. Defaulting to 0 x 0"_s, { style->name });
                     }
 
                     AssetMetadata* child_metadata = asset_manager().add_asset(CheckboxStyle::asset_type(), style->name, {});
