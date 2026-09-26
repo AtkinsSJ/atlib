@@ -89,8 +89,29 @@ Optional<V2I> V2I::read(LineReader& reader)
     return {};
 }
 
+Optional<V2I> V2I::read_position(Lexer& lexer)
+{
+    // 123,456
+    return lexer.consume_with_callback<V2I>([](Lexer& lexer) -> Optional<V2I> {
+        auto x = lexer.consume_int<s32>();
+        if (!x.has_value())
+            return {};
+        if (!lexer.consume_specific(','))
+            return {};
+        auto y = lexer.consume_int<s32>();
+        if (!y.has_value())
+            return {};
+
+        if (x.value() < 0 || y.value() < 0)
+            return {};
+
+        return V2I { x.release_value(), y.release_value() };
+    });
+}
+
 Optional<V2I> V2I::read_size(Lexer& lexer)
 {
+    // 123x456
     return lexer.consume_with_callback<V2I>([](Lexer& lexer) -> Optional<V2I> {
         auto x = lexer.consume_int<s32>();
         if (!x.has_value())

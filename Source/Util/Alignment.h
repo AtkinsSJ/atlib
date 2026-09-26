@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Sam Atkins <sam@samatkins.co.uk>
+ * Copyright (c) 2025-2026, Sam Atkins <sam@samatkins.co.uk>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -53,6 +53,7 @@ struct Alignment {
     }
 
     static Optional<Alignment> read(LineReader&);
+    static ErrorOr<Alignment> read(Lexer&);
 
     static Alignment centre() { return { HAlign::Centre, VAlign::Centre }; }
     static Alignment fill() { return { HAlign::Fill, VAlign::Fill }; }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2025, Sam Atkins <sam@samatkins.co.uk>
+ * Copyright (c) 2015-2026, Sam Atkins <sam@samatkins.co.uk>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -17,4 +17,5 @@ struct Padding {
     s32 right;
 
     static Optional<Padding> read(LineReader&);
+    static Optional<Padding> read(Lexer&);
 };

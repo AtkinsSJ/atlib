@@ -1,10 +1,13 @@
 /*
- * Copyright (c) 2025, Sam Atkins <sam@samatkins.co.uk>
+ * Copyright (c) 2025-2026, Sam Atkins <sam@samatkins.co.uk>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #include "Colour.h"
+
+#include <Util/ErrorOr.h>
+#include <Util/Lexer.h>
 
 Optional<Colour> Colour::read(LineReader& reader, LineReader::IsRequired is_required)
 {
@@ -32,6 +35,31 @@ Optional<Colour> Colour::read(LineReader& reader, LineReader::IsRequired is_requ
 
     reader.error("Couldn't parse '{0}' as a color. Expected 3 or 4 integers from 0 to 255, for R G B and optional A."_s, { all_arguments });
     return {};
+}
+
+ErrorOr<Colour> Colour::read(Lexer& lexer)
+{
+    // TODO: Right now this only handles a sequence of 3 or 4 0-255 values for RGB(A).
+    // We might want to handle other color definitions eventually which are more friendly, eg 0-1 fractions.
+    return lexer.consume_with_callback_or_error<Colour>([](Lexer& lexer) -> ErrorOr<Colour> {
+        lexer.discard_whitespace();
+        auto r = lexer.consume_int<u8>();
+        lexer.discard_whitespace();
+        auto g = lexer.consume_int<u8>();
+        lexer.discard_whitespace();
+        auto b = lexer.consume_int<u8>();
+        lexer.discard_whitespace();
+
+        if (r.has_value() && g.has_value() && b.has_value()) {
+            // NB: We default to fully opaque if no alpha is provided
+            auto a = lexer.consume_int<u8>();
+            lexer.discard_whitespace();
+
+            return Colour::from_rgb_255(r.release_value(), g.release_value(), b.release_value(), a.value_or(255));
+        }
+
+        return "Expected 3 or 4 integers from 0 to 255, for R G B and optional A."_s;
+    });
 }
 
 Colour Colour::as_opaque() const
