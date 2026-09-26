@@ -11,6 +11,7 @@
 #include <IO/File.h>
 #include <IO/LineReader.h>
 #include <SDL_image.h>
+#include <Util/Lexer.h>
 
 // FIXME: Put this somewhere proper eventually. It's currently duplicated with the Texture loading code.
 static SDL_Surface* createSurfaceFromFileData(Blob fileData, String name)
@@ -48,20 +49,23 @@ ErrorOr<OwnedRef<Asset>> Cursor::load_defs(AssetMetadata& metadata, Blob data)
     ChunkedArray<CursorDef> cursor_defs { temp_arena(), 128 };
 
     while (reader.load_next_line()) {
-        auto name_token = reader.next_token();
+        Lexer lexer { reader.current_line() };
+        auto name_token = lexer.consume_token();
+        lexer.discard_whitespace();
         if (!name_token.has_value())
             continue;
 
-        auto filename = reader.next_token();
-        auto hot_x = reader.read_int<s32>();
-        auto hot_y = reader.read_int<s32>();
-        if (!filename.has_value() || !hot_x.has_value() || !hot_y.has_value())
-            return reader.make_error_message("Couldn't parse cursor definition. Expected 'name filename.png hot-x hot-y'."_s);
+        auto filename = lexer.consume_token();
+        lexer.discard_whitespace();
+        auto hotspot = V2I::read_position(lexer);
+        lexer.discard_whitespace();
+        if (!filename.has_value() || !hotspot.has_value() || lexer.has_next())
+            return reader.make_error_message("Couldn't parse cursor definition. Expected 'name filename.png hot-x,hot-y'."_s);
 
         cursor_defs.append({
             .name = name_token.release_value(),
             .filename = filename.release_value(),
-            .hotspot = v2i(hot_x.release_value(), hot_y.release_value()),
+            .hotspot = hotspot.release_value(),
         });
     }
 
