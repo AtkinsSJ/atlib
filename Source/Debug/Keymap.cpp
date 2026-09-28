@@ -6,6 +6,7 @@
 
 #include "Keymap.h"
 
+#include <IO/LineReader.h>
 #include <Util/Lexer.h>
 
 ErrorOr<OwnedRef<Keymap>> Keymap::load(AssetMetadata& metadata, Blob file_data)

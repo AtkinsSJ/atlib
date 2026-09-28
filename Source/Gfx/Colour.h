@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include <IO/LineReader.h>
 #include <Util/Basic.h>
 #include <Util/Optional.h>
 
@@ -34,7 +33,6 @@ public:
         };
     }
 
-    static Optional<Colour> read(LineReader&, LineReader::IsRequired = LineReader::IsRequired::Yes);
     static ErrorOr<Colour> read(Lexer&);
 
     static Colour white()

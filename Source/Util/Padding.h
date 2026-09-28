@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include <IO/Forward.h>
 #include <Util/Basic.h>
 #include <Util/Forward.h>
 
@@ -16,6 +15,5 @@ struct Padding {
     s32 left;
     s32 right;
 
-    static Optional<Padding> read(LineReader&);
     static Optional<Padding> read(Lexer&);
 };

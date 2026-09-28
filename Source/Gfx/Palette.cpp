@@ -8,6 +8,7 @@
 #include <Assets/AssetManager.h>
 #include <Assets/AssetRef.h>
 #include <Assets/ContainerAsset.h>
+#include <IO/LineReader.h>
 #include <Util/Lexer.h>
 
 Palette::Palette(Type type, Array<Colour> colours)

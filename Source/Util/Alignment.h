@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include <IO/Forward.h>
 #include <Util/Basic.h>
 #include <Util/Optional.h>
 
@@ -52,7 +51,6 @@ struct Alignment {
     {
     }
 
-    static Optional<Alignment> read(LineReader&);
     static ErrorOr<Alignment> read(Lexer&);
 
     static Alignment centre() { return { HAlign::Centre, VAlign::Centre }; }

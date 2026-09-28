@@ -7,6 +7,7 @@
 #pragma once
 
 #include <Util/Forward.h>
+#include <Util/String.h>
 #include <Util/Variant.h>
 
 template<typename T>

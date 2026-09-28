@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include <IO/Forward.h>
 #include <Util/Basic.h>
 #include <Util/Forward.h>
 
@@ -82,7 +81,6 @@ struct V2I {
     s32 x;
     s32 y;
 
-    static Optional<V2I> read(LineReader&);
     static Optional<V2I> read_position(Lexer&);
     static Optional<V2I> read_size(Lexer&);
 

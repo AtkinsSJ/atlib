@@ -6,6 +6,7 @@
 
 #include "SettingsState.h"
 #include <IO/BinaryFileWriter.h>
+#include <IO/LineReader.h>
 #include <Settings/Settings.h>
 #include <Util/StringBuilder.h>
 

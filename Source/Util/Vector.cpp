@@ -6,7 +6,6 @@
 
 #include "Vector.h"
 
-#include <IO/LineReader.h>
 #include <Util/Lexer.h>
 #include <Util/Maths.h>
 #include <Util/Optional.h>
@@ -73,20 +72,6 @@ V2I v2i(s32 x, s32 y)
 V2I v2i(V2 source)
 {
     return v2i(floor_s32(source.x), floor_s32(source.y));
-}
-
-Optional<V2I> V2I::read(LineReader& reader)
-{
-    auto token = reader.peek_token();
-
-    auto x = reader.read_int<s32>(LineReader::IsRequired::Yes, 'x');
-    auto y = reader.read_int<s32>();
-
-    if (x.has_value() && y.has_value())
-        return v2i(x.release_value(), y.release_value());
-
-    reader.error("Couldn't parse '{0}' as a V2I, expected 2 integers with an 'x' between, eg '8x12'"_s, { token.value_or({}) });
-    return {};
 }
 
 Optional<V2I> V2I::read_position(Lexer& lexer)
