@@ -76,7 +76,6 @@ s32 const consoleLineLength = 255;
 void initConsole(MemoryArena* debugArena, float openHeight, float maximisedHeight, float openSpeed);
 void updateAndRenderConsole(Console* console);
 
-void loadConsoleKeyboardShortcuts(Console* console, Blob data, String filename);
 void consoleHandleCommand(Console* console, StringView commandInput);
 
 void consoleWriteLine(String text, ConsoleLineStyle style = ConsoleLineStyle::Default);

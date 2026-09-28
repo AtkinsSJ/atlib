@@ -250,29 +250,6 @@ void updateAndRenderConsole(Console* console)
     }
 }
 
-void loadConsoleKeyboardShortcuts(Console* console, Blob data, String filename)
-{
-    LineReader reader { filename, data };
-
-    console->commandShortcuts.clear();
-
-    while (reader.load_next_line()) {
-        auto shortcut_string = reader.next_token();
-        if (!shortcut_string.has_value())
-            continue;
-        auto command = reader.remainder_of_current_line();
-
-        if (auto shortcut = KeyboardShortcut::from_string(shortcut_string.value()); shortcut.has_value()) {
-            console->commandShortcuts.append({
-                .shortcut = shortcut.release_value(),
-                .command = command,
-            });
-        } else {
-            reader.error("Unrecognised key in keyboard shortcut sequence '{0}'"_s, { shortcut_string.value() });
-        }
-    }
-}
-
 void consoleHandleCommand(Console* console, StringView commandInput)
 {
     // copy input to output, for readability
