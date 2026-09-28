@@ -39,9 +39,19 @@ void SettingsState::load_from_file(String filename, Blob data)
     LineReader reader { filename, data };
 
     while (reader.load_next_line()) {
-        auto maybe_setting_name = reader.next_token('=');
+        Lexer lexer { reader.current_line() };
+        auto maybe_setting_name = lexer.consume_until(' ');
         if (!maybe_setting_name.has_value()) {
             reader.warn("Setting has no name"_s);
+            continue;
+        }
+
+        lexer.discard_whitespace();
+        bool has_equals = lexer.consume_specific('=');
+        lexer.discard_whitespace();
+
+        if (!has_equals || !lexer.has_next()) {
+            reader.warn("Setting has no value"_s);
             continue;
         }
 
@@ -52,7 +62,7 @@ void SettingsState::load_from_file(String filename, Blob data)
             continue;
         }
 
-        maybe_setting.value()->set_from_file(reader);
+        maybe_setting.value()->read(lexer);
     }
 }
 

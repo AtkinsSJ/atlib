@@ -19,4 +19,4 @@ class Settings;
 class SettingsChangeListener;
 class SettingsState;
 class StringSetting;
-class V2ISetting;
+class IntSizeSetting;

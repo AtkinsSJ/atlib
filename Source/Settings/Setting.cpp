@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Sam Atkins <sam@samatkins.co.uk>
+ * Copyright (c) 2025-2026, Sam Atkins <sam@samatkins.co.uk>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -32,9 +32,11 @@ void BoolSetting::add_ui_widget(UI::Panel& ui)
     ui.addCheckbox(value_pointer());
 }
 
-bool BoolSetting::set_from_file(LineReader& reader)
+bool BoolSetting::read(Lexer& lexer)
 {
-    if (auto value = reader.read_bool(); value.has_value()) {
+    auto value = lexer.consume_bool();
+    lexer.discard_whitespace();
+    if (value.has_value() && !lexer.has_next()) {
         set_value(value.release_value());
         return true;
     }
@@ -44,6 +46,31 @@ bool BoolSetting::set_from_file(LineReader& reader)
 String BoolSetting::serialize_value() const
 {
     return formatBool(value());
+}
+
+void IntSizeSetting::set_value_from(Setting const& other)
+{
+    set_value(dynamic_cast<IntSizeSetting const&>(other).value());
+}
+
+bool IntSizeSetting::read(Lexer& lexer)
+{
+    auto value = V2I::read_size(lexer);
+    lexer.discard_whitespace();
+    if (value.has_value() && !lexer.has_next()) {
+        set_value(value.release_value());
+        return true;
+    }
+    return false;
+}
+
+String IntSizeSetting::serialize_value() const
+{
+    StringBuilder stb;
+    stb.append(formatInt(value().x));
+    stb.append('x');
+    stb.append(formatInt(value().y));
+    return stb.deprecated_to_string();
 }
 
 void PercentSetting::set_value_from(Setting const& other)
@@ -59,9 +86,11 @@ void PercentSetting::add_ui_widget(UI::Panel& ui)
     ui.addSlider(percent, 0.0f, 1.0f);
 }
 
-bool PercentSetting::set_from_file(LineReader& reader)
+bool PercentSetting::read(Lexer& lexer)
 {
-    if (auto value = reader.read_float(); value.has_value()) {
+    auto value = lexer.consume_float<float>();
+    lexer.discard_whitespace();
+    if (value.has_value() && !lexer.has_next()) {
         float clamped_value = clamp01(value.release_value());
         set_value(clamped_value);
         return true;
@@ -79,9 +108,11 @@ void S32Setting::set_value_from(Setting const& other)
     set_value(dynamic_cast<S32Setting const&>(other).value());
 }
 
-bool S32Setting::set_from_file(LineReader& reader)
+bool S32Setting::read(Lexer& lexer)
 {
-    if (auto value = reader.read_int<s32>(); value.has_value()) {
+    auto value = lexer.consume_int<s32>();
+    lexer.discard_whitespace();
+    if (value.has_value() && !lexer.has_next()) {
         set_value(value.release_value());
         return true;
     }
@@ -105,11 +136,13 @@ void S32RangeSetting::add_ui_widget(UI::Panel& ui)
     ui.addSlider(intValue, m_min_value, m_max_value);
 }
 
-bool S32RangeSetting::set_from_file(LineReader& reader)
+bool S32RangeSetting::read(Lexer& lexer)
 {
-    if (auto value = reader.read_int<s32>(); value.has_value()) {
-        s32 clampedValue = clamp(value.release_value(), m_min_value, m_max_value);
-        set_value(clampedValue);
+    auto value = lexer.consume_int<s32>();
+    lexer.discard_whitespace();
+    if (value.has_value() && !lexer.has_next()) {
+        s32 clamped_value = clamp(value.release_value(), m_min_value, m_max_value);
+        set_value(clamped_value);
         return true;
     }
     return false;
@@ -125,41 +158,19 @@ void StringSetting::set_value_from(Setting const& other)
     set_value(dynamic_cast<StringSetting const&>(other).value());
 }
 
-bool StringSetting::set_from_file(LineReader& reader)
+bool StringSetting::read(Lexer& lexer)
 {
-    if (auto token = reader.next_token(); token.has_value()) {
+    auto token = lexer.consume_token();
+    lexer.discard_whitespace();
+    if (token.has_value() && !lexer.has_next()) {
         String value = Settings::the().arena.allocate_string(token.value());
         set_value(value);
         return true;
     }
-    reader.error("Missing value for setting `{}`"_s, { name() });
     return false;
 }
 
 String StringSetting::serialize_value() const
 {
     return value();
-}
-
-void V2ISetting::set_value_from(Setting const& other)
-{
-    set_value(dynamic_cast<V2ISetting const&>(other).value());
-}
-
-bool V2ISetting::set_from_file(LineReader& reader)
-{
-    if (auto value = V2I::read(reader); value.has_value()) {
-        set_value(value.release_value());
-        return true;
-    }
-    return false;
-}
-
-String V2ISetting::serialize_value() const
-{
-    StringBuilder stb;
-    stb.append(formatInt(value().x));
-    stb.append('x');
-    stb.append(formatInt(value().y));
-    return stb.deprecated_to_string();
 }

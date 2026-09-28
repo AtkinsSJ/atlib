@@ -1,16 +1,16 @@
 /*
- * Copyright (c) 2025, Sam Atkins <sam@samatkins.co.uk>
+ * Copyright (c) 2025-2026, Sam Atkins <sam@samatkins.co.uk>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #pragma once
 
-#include <IO/LineReader.h>
 #include <UI/Panel.h>
 #include <Util/Basic.h>
 #include <Util/Enum.h>
 #include <Util/EnumMap.h>
+#include <Util/Lexer.h>
 #include <Util/String.h>
 #include <Util/Vector.h>
 
@@ -39,7 +39,7 @@ public:
     virtual void add_ui_line(UI::Panel&);
     virtual void add_ui_widget(UI::Panel&);
 
-    virtual bool set_from_file(LineReader&) = 0;
+    virtual bool read(Lexer&) = 0;
     virtual String serialize_value() const = 0;
 
 protected:
@@ -93,7 +93,7 @@ public:
 
 private:
     virtual void add_ui_widget(UI::Panel&) override;
-    virtual bool set_from_file(LineReader&) override;
+    virtual bool read(Lexer&) override;
     virtual String serialize_value() const override;
 };
 
@@ -130,13 +130,11 @@ private:
         });
     }
 
-    virtual bool set_from_file(LineReader& reader) override
+    virtual bool read(Lexer& lexer) override
     {
-        auto token = reader.next_token();
-        if (!token.has_value()) {
-            reader.error("Missing value for setting `{}`"_s, { name() });
+        auto token = lexer.consume_token();
+        if (!token.has_value())
             return false;
-        }
 
         auto value = token.release_value();
 
@@ -147,8 +145,6 @@ private:
                 return true;
             }
         }
-
-        reader.error("Couldn't find '{0}' in the list of valid values for setting '{1}'."_s, { value, name() });
         return false;
     }
 
@@ -158,6 +154,22 @@ private:
     }
 
     EnumMap<E, EnumSettingData> m_enum_data;
+};
+
+class IntSizeSetting final : public BaseSetting<V2I> {
+public:
+    IntSizeSetting(String name, String text_asset_name, V2I default_value)
+        : BaseSetting(name, text_asset_name, Type::V2I, default_value)
+    {
+    }
+
+    virtual ~IntSizeSetting() override = default;
+
+    virtual void set_value_from(Setting const& other) override;
+
+private:
+    virtual bool read(Lexer&) override;
+    virtual String serialize_value() const override;
 };
 
 class PercentSetting final : public BaseSetting<float> {
@@ -173,7 +185,7 @@ public:
 
 private:
     virtual void add_ui_widget(UI::Panel&) override;
-    virtual bool set_from_file(LineReader&) override;
+    virtual bool read(Lexer&) override;
     virtual String serialize_value() const override;
 };
 
@@ -189,7 +201,7 @@ public:
     virtual void set_value_from(Setting const& other) override;
 
 private:
-    virtual bool set_from_file(LineReader&) override;
+    virtual bool read(Lexer&) override;
     virtual String serialize_value() const override;
 };
 
@@ -208,7 +220,7 @@ public:
 
 private:
     virtual void add_ui_widget(UI::Panel&) override;
-    virtual bool set_from_file(LineReader&) override;
+    virtual bool read(Lexer&) override;
     virtual String serialize_value() const override;
 
     s32 m_min_value;
@@ -227,22 +239,6 @@ public:
     virtual void set_value_from(Setting const& other) override;
 
 private:
-    virtual bool set_from_file(LineReader&) override;
-    virtual String serialize_value() const override;
-};
-
-class V2ISetting final : public BaseSetting<V2I> {
-public:
-    V2ISetting(String name, String text_asset_name, V2I default_value)
-        : BaseSetting(name, text_asset_name, Type::V2I, default_value)
-    {
-    }
-
-    virtual ~V2ISetting() override = default;
-
-    virtual void set_value_from(Setting const& other) override;
-
-private:
-    virtual bool set_from_file(LineReader&) override;
+    virtual bool read(Lexer&) override;
     virtual String serialize_value() const override;
 };

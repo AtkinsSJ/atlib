@@ -16,7 +16,7 @@
 #include <UI/Drawable.h>
 #include <UI/TextInput.h>
 #include <UI/Toast.h>
-#include <Util/Orientation.h>
+#include <Util/Lexer.h>
 #include <Util/TokenReader.h>
 
 static Console theConsole;
@@ -386,16 +386,15 @@ ConsoleCommand(setting)
         return;
     }
 
-    // FIXME: This is hacky, surely we can come up with a nice API for this.
-    LineReader reader { "console"_s, Blob { static_cast<smm>(arguments.length()), const_cast<u8*>(reinterpret_cast<u8 const*>(arguments.raw_pointer_to_characters())) } };
-    reader.load_next_line();
+    Lexer lexer { arguments };
 
-    auto maybe_setting_name = reader.next_token();
+    auto maybe_setting_name = lexer.consume_token();
     if (!maybe_setting_name.has_value()) {
         consoleWriteLine("Missing setting name."_s, ConsoleLineStyle::Error);
         return;
     }
     auto setting_name = maybe_setting_name.release_value();
+    lexer.discard_whitespace();
     auto maybe_setting = settings.get_setting(setting_name.deprecated_to_string());
     if (!maybe_setting.has_value()) {
         consoleWriteLine(myprintf("Unrecognized setting name '{}'."_s, { setting_name }), ConsoleLineStyle::Error);
@@ -408,7 +407,7 @@ ConsoleCommand(setting)
         return;
     }
 
-    if (setting.set_from_file(reader)) {
+    if (setting.read(lexer)) {
         Settings::the().apply();
         consoleWriteLine(myprintf("Set {} to {}"_s, { setting_name, setting.serialize_value() }), ConsoleLineStyle::Success);
     } else {
