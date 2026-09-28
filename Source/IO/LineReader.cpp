@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2025, Sam Atkins <sam@samatkins.co.uk>
+ * Copyright (c) 2019-2026, Sam Atkins <sam@samatkins.co.uk>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -61,28 +61,6 @@ u32 LineReader::line_count() const
     return m_line_count.value();
 }
 
-u32 LineReader::count_occurrences_of_property_in_current_command(String const& property_name) const
-{
-    u32 result = 0;
-
-    // Conceptually this method is const, because the LineReader is left in the same state it was in before.
-    // However, we do need to modify its state temporarily. So, we have some const_cast nastiness.
-    auto& mutable_this = const_cast<LineReader&>(*this);
-
-    auto saved_position = save_state();
-    while (mutable_this.load_next_line()) {
-        auto first_word = mutable_this.next_token();
-        if (!first_word.has_value() || first_word.value().starts_with(':'))
-            break; // We're done with this :Command
-
-        if (first_word == property_name)
-            result++;
-    }
-    mutable_this.restore_state(saved_position);
-
-    return result;
-}
-
 bool LineReader::load_next_line()
 {
     bool result = true;
@@ -126,7 +104,6 @@ bool LineReader::load_next_line()
     } while (line.is_empty() && !(m_state.start_of_next_line >= m_data.size()));
 
     m_state.current_line = line;
-    m_state.current_line_reader = TokenReader { line };
 
     if (line.is_empty()) {
         if (m_skip_blank_lines) {
@@ -144,11 +121,6 @@ bool LineReader::load_next_line()
 StringView LineReader::current_line() const
 {
     return m_state.current_line;
-}
-
-StringView LineReader::remainder_of_current_line() const
-{
-    return m_state.current_line_reader.remaining_input().with_whitespace_trimmed();
 }
 
 void LineReader::warn(String message, std::initializer_list<StringView> args) const
@@ -170,65 +142,4 @@ Error LineReader::make_error_message(String message, std::initializer_list<Strin
     auto error = myprintf("{0}:{1} - {2}"_s, { m_filename, lineNumber, text });
     logError("{}"_s, { error });
     return error;
-}
-
-Optional<StringView> LineReader::next_token(Optional<char> split_char)
-{
-    return m_state.current_line_reader.next_token(split_char);
-}
-
-Optional<StringView> LineReader::peek_token(Optional<char> split_char)
-{
-    return m_state.current_line_reader.peek_token(split_char);
-}
-
-s32 LineReader::count_remaining_tokens_in_current_line(Optional<char> split_char) const
-{
-    return m_state.current_line_reader.remaining_token_count(split_char);
-}
-
-Optional<bool> LineReader::read_bool(IsRequired is_required, Optional<char> split_char)
-{
-    auto maybe_token = next_token(split_char);
-
-    if (!maybe_token.has_value()) {
-        if (is_required == IsRequired::Yes)
-            error("Expected a boolean value."_s);
-        return {};
-    }
-    auto& token = maybe_token.value();
-
-    if (auto maybe_bool = token.to_bool(); maybe_bool.has_value())
-        return maybe_bool.value();
-
-    error("Couldn't parse '{0}' as a boolean."_s, { token });
-    return {};
-}
-
-Optional<double> LineReader::read_double(IsRequired is_required, Optional<char> split_char)
-{
-    auto maybe_token = next_token(split_char);
-
-    if (!maybe_token.has_value()) {
-        if (is_required == IsRequired::Yes)
-            error("Expected a floating-point or percentage value."_s);
-        return {};
-    }
-    auto& token = maybe_token.value();
-
-    if (token.ends_with('%')) {
-        token = token.substring(0, token.length() - 1);
-
-        if (auto percent = token.to_float(); percent.has_value())
-            return percent.value() * 0.01;
-
-        error("Couldn't parse '{0}%' as a percentage."_s, { token });
-        return {};
-    }
-
-    if (auto float_value = token.to_float(); float_value.has_value())
-        return float_value.value();
-
-    error("Couldn't parse '{0}' as a float."_s, { token });
-    return {};
 }
