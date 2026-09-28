@@ -8,6 +8,7 @@
 #include <Assets/AssetManager.h>
 #include <Assets/AssetRef.h>
 #include <Assets/ContainerAsset.h>
+#include <Util/Lexer.h>
 
 Palette::Palette(Type type, Array<Colour> colours)
     : m_type(type)
@@ -29,82 +30,98 @@ ErrorOr<OwnedRef<Asset>> Palette::load_defs(AssetMetadata& metadata, Blob file_d
     };
     ChunkedArray<PaletteData> palettes { temp_arena(), 128 };
     while (reader.load_next_line()) {
-        auto command_token = reader.next_token();
-        if (!command_token.has_value())
-            continue;
-        auto command = command_token.release_value();
+        Lexer lexer { reader.current_line() };
 
-        if (command.starts_with(':')) {
-            command = command.substring(1);
+        // Commands
+        if (lexer.consume_specific(':')) {
+            // Define something
+            auto command = lexer.consume_token();
+            lexer.discard_whitespace();
 
             if (command == "Palette"_s) {
-                if (auto palette_name = reader.next_token(); palette_name.has_value()) {
-                    PaletteData data;
-                    data.name = palette_name.release_value();
-                    data.fixed_colors = { temp_arena(), 128 };
-                    palettes.append(move(data));
-                } else {
-                    return reader.make_error_message("Missing name for Palette"_s);
-                }
+                auto palette_name = lexer.consume_token();
+                lexer.discard_whitespace();
+                if (!palette_name.has_value() || lexer.has_next())
+                    return reader.make_error_message("Invalid :Palette definition: Expected `:Palette NAME`"_s);
+                palettes.append(PaletteData {
+                    .name = palette_name.release_value(),
+                    .fixed_colors = { temp_arena(), 128 },
+                });
             } else {
-                return reader.make_error_message("Unexpected command ':{0}' in palette-definitions file. Only :Palette is allowed!"_s, { command });
+                return reader.make_error_message("Only :Palette definitions are allowed here!"_s);
             }
+            continue;
+        }
+
+        auto maybe_property = lexer.consume_token();
+        if (!maybe_property.has_value())
+            continue;
+        auto property_name = maybe_property.release_value();
+        lexer.discard_whitespace();
+
+        if (palettes.is_empty())
+            return reader.make_error_message("Found a property before starting a :Palette"_s);
+
+        auto read_colour_property = [](StringView property_name, LineReader& reader, Lexer& lexer) -> ErrorOr<Colour> {
+            auto colour = Colour::read(lexer);
+            lexer.discard_whitespace();
+            if (colour.is_error())
+                return reader.make_error_message("Failed to parse {0}: {1}"_s, { property_name, colour.release_error() });
+            if (lexer.has_next())
+                return reader.make_error_message("Failed to parse {0}. Expected: `{0} COLOR`"_s, { property_name });
+            return colour.release_value();
+        };
+
+        auto& palette = palettes.get(palettes.count - 1);
+        if (property_name == "type"_s) {
+            auto type = lexer.consume_token();
+            lexer.discard_whitespace();
+            if (!type.has_value() || lexer.has_next())
+                return reader.make_error_message("Failed to parse type. Expected: `type NAME`"_s);
+
+            if (type == "fixed"_s) {
+                palette.type = Type::Fixed;
+            } else if (type == "gradient"_s) {
+                palette.type = Type::Gradient;
+            } else {
+                return reader.make_error_message("Unrecognised palette type '{0}', allowed values are: fixed, gradient"_s, { type.value() });
+            }
+        } else if (property_name == "size"_s) {
+            auto size = lexer.consume_int<size_t>();
+            lexer.discard_whitespace();
+            if (!size.has_value() || lexer.has_next())
+                return reader.make_error_message("Failed to parse size. Expected: `size INTEGER`"_s);
+            palette.size = size.release_value();
+        } else if (property_name == "color"_s) {
+            auto colour = read_colour_property(property_name, reader, lexer);
+            if (colour.is_error())
+                return colour.release_error();
+            if (palette.type != Type::Fixed)
+                return reader.make_error_message("'color' is only a valid command for fixed palettes."_s);
+
+            s32 color_index = palette.fixed_colors.count;
+            // FIXME: Is `size` actually necessary/useful?
+            if (color_index >= palette.size)
+                return reader.make_error_message("Too many 'color' definitions! 'size' must be large enough."_s);
+            palette.fixed_colors.append(colour.release_value());
+        } else if (property_name == "from"_s) {
+            auto from_colour = read_colour_property(property_name, reader, lexer);
+            if (from_colour.is_error())
+                return from_colour.release_error();
+            if (palette.type != Type::Gradient)
+                return reader.make_error_message("'from' is only a valid command for gradient palettes."_s);
+
+            palette.from_color = from_colour.release_value();
+        } else if (property_name == "to"_s) {
+            auto to_colour = read_colour_property(property_name, reader, lexer);
+            if (to_colour.is_error())
+                return to_colour.release_error();
+            if (palette.type != Type::Gradient)
+                return reader.make_error_message("'to' is only a valid command for gradient palettes."_s);
+
+            palette.to_color = to_colour.release_value();
         } else {
-            if (palettes.is_empty())
-                return reader.make_error_message("Unexpected command '{0}' before the start of a :Palette"_s, { command });
-
-            auto& palette = palettes.get(palettes.count - 1);
-
-            if (command == "type"_s) {
-                auto type = reader.next_token();
-                if (!type.has_value()) {
-                    return reader.make_error_message("Missing palette type"_s);
-                }
-
-                if (type == "fixed"_s) {
-                    palette.type = Palette::Type::Fixed;
-                } else if (type == "gradient"_s) {
-                    palette.type = Palette::Type::Gradient;
-                } else {
-                    return reader.make_error_message("Unrecognised palette type '{0}', allowed values are: fixed, gradient"_s, { type.value() });
-                }
-            } else if (command == "size"_s) {
-                if (auto size = reader.read_int<s32>(); size.has_value()) {
-                    palette.size = size.release_value();
-                } else {
-                    return "Failed to read size"_s;
-                }
-            } else if (command == "color"_s) {
-                if (auto color = Colour::read(reader); color.has_value()) {
-                    if (palette.type == Palette::Type::Fixed) {
-                        s32 colorIndex = palette.fixed_colors.count;
-                        // FIXME: Is `size` actually necessary/useful?
-                        if (colorIndex >= palette.size)
-                            return reader.make_error_message("Too many 'color' definitions! 'size' must be large enough."_s);
-                        palette.fixed_colors.append(color.release_value());
-                    } else {
-                        return reader.make_error_message("'color' is only a valid command for fixed palettes."_s);
-                    }
-                }
-            } else if (command == "from"_s) {
-                if (auto from = Colour::read(reader); from.has_value()) {
-                    if (palette.type == Palette::Type::Gradient) {
-                        palette.from_color = from.release_value();
-                    } else {
-                        return reader.make_error_message("'from' is only a valid command for gradient palettes."_s);
-                    }
-                }
-            } else if (command == "to"_s) {
-                if (auto to = Colour::read(reader); to.has_value()) {
-                    if (palette.type == Palette::Type::Gradient) {
-                        palette.to_color = to.release_value();
-                    } else {
-                        return reader.make_error_message("'to' is only a valid command for gradient palettes."_s);
-                    }
-                }
-            } else {
-                return reader.make_error_message("Unrecognised command '{0}'"_s, { command });
-            }
+            return reader.make_error_message("Unrecognised property '{0}'"_s, { property_name });
         }
     }
 
