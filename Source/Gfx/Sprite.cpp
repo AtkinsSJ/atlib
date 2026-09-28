@@ -11,6 +11,7 @@
 #include <Gfx/Ninepatch.h>
 #include <Gfx/Texture.h>
 #include <IO/LineReader.h>
+#include <Util/Lexer.h>
 
 Sprite& Sprite::get(StringView name)
 {
@@ -73,48 +74,56 @@ ErrorOr<OwnedRef<Asset>> load_sprite_defs(AssetMetadata& metadata, Blob data)
 {
     LineReader reader { metadata.shortName, data };
 
-    AssetMetadata* textureAsset = nullptr;
-    V2I spriteSize = v2i(0, 0);
-    V2I spriteBorder = v2i(0, 0);
+    AssetMetadata* texture_asset = nullptr;
+    V2I sprite_size = v2i(0, 0);
+    V2I sprite_border = v2i(0, 0);
     AssetMetadata* current_sprite_group_metadata = nullptr;
 
     // Count the number of child assets, so we can allocate our spriteNames array
-    size_t childAssetCount = 0;
+    size_t child_asset_count = 0;
     while (reader.load_next_line()) {
-        if (auto command = reader.next_token(); command.has_value() && command.value().starts_with(':'))
-            childAssetCount++;
+        if (reader.current_line().starts_with(':'))
+            child_asset_count++;
     }
-    auto children = asset_manager().allocate_array<GenericAssetRef>(childAssetCount);
+    auto children = asset_manager().allocate_array<GenericAssetRef>(child_asset_count);
     reader.restart();
 
     // Now, actually read things
     while (reader.load_next_line()) {
-        auto maybe_command = reader.next_token();
-        if (!maybe_command.has_value())
-            continue;
-        auto command = maybe_command.release_value();
+        Lexer lexer { reader.current_line() };
 
-        if (command.starts_with(':')) // Definitions
-        {
+        // Commands
+        if (lexer.consume_specific(':')) {
             // Define something
-            command = command.substring(1).deprecated_to_string();
+            auto command = lexer.consume_token();
+            lexer.discard_whitespace();
 
-            textureAsset = nullptr;
+            texture_asset = nullptr;
             current_sprite_group_metadata = nullptr;
 
             if (command == "Ninepatch"_s) {
-                auto name = reader.next_token();
-                auto filename = reader.next_token();
-                auto pu0 = reader.read_int<s32>();
-                auto pu1 = reader.read_int<s32>();
-                auto pu2 = reader.read_int<s32>();
-                auto pu3 = reader.read_int<s32>();
-                auto pv0 = reader.read_int<s32>();
-                auto pv1 = reader.read_int<s32>();
-                auto pv2 = reader.read_int<s32>();
-                auto pv3 = reader.read_int<s32>();
+                auto name = lexer.consume_token();
+                lexer.discard_whitespace();
+                auto filename = lexer.consume_token();
+                lexer.discard_whitespace();
+                auto pu0 = lexer.consume_int<s32>();
+                lexer.discard_whitespace();
+                auto pu1 = lexer.consume_int<s32>();
+                lexer.discard_whitespace();
+                auto pu2 = lexer.consume_int<s32>();
+                lexer.discard_whitespace();
+                auto pu3 = lexer.consume_int<s32>();
+                lexer.discard_whitespace();
+                auto pv0 = lexer.consume_int<s32>();
+                lexer.discard_whitespace();
+                auto pv1 = lexer.consume_int<s32>();
+                lexer.discard_whitespace();
+                auto pv2 = lexer.consume_int<s32>();
+                lexer.discard_whitespace();
+                auto pv3 = lexer.consume_int<s32>();
+                lexer.discard_whitespace();
 
-                if (!all_have_values(name, filename, pu0, pu1, pu2, pu3, pv0, pv1, pv2, pv3)) {
+                if (!all_have_values(name, filename, pu0, pu1, pu2, pu3, pv0, pv1, pv2, pv3) || lexer.has_next()) {
                     return reader.make_error_message("Couldn't parse Ninepatch. Expected: ':Ninepatch identifier filename.png pu0 pu1 pu2 pu3 pv0 pv1 pv2 pv3'"_s);
                 }
 
@@ -123,15 +132,18 @@ ErrorOr<OwnedRef<Asset>> load_sprite_defs(AssetMetadata& metadata, Blob data)
                 children.append(ninepatch->get_ref());
             } else if (command == "Sprite"_s) {
                 // @Copypasta from the SpriteGroup branch, and the 'sprite' property
-                auto name = reader.next_token();
-                auto filename = reader.next_token();
-                auto spriteSizeIn = V2I::read(reader);
+                auto name = lexer.consume_token();
+                lexer.discard_whitespace();
+                auto filename = lexer.consume_token();
+                lexer.discard_whitespace();
+                auto sprite_size_in = V2I::read_size(lexer);
+                lexer.discard_whitespace();
 
-                if (!all_have_values(name, filename, spriteSizeIn)) {
+                if (!all_have_values(name, filename, sprite_size_in) || lexer.has_next()) {
                     return reader.make_error_message("Couldn't parse Sprite. Expected: ':Sprite identifier filename.png SWxSH'"_s);
                 }
 
-                spriteSize = spriteSizeIn.release_value();
+                sprite_size = sprite_size_in.release_value();
 
                 AssetMetadata* group = add_sprite_group(name.release_value(), 1);
                 auto& group_asset = dynamic_cast<SpriteGroup&>(*group->loaded_asset);
@@ -139,23 +151,26 @@ ErrorOr<OwnedRef<Asset>> load_sprite_defs(AssetMetadata& metadata, Blob data)
                 group_asset.sprites.append({
                     .texture = asset_manager()
                         .add_asset(Texture::asset_type(), filename.release_value()),
-                    .uv = { 0, 0, spriteSize.x, spriteSize.y },
-                    .pixelWidth = spriteSize.x,
-                    .pixelHeight = spriteSize.y,
+                    .uv = { 0, 0, sprite_size.x, sprite_size.y },
+                    .pixelWidth = sprite_size.x,
+                    .pixelHeight = sprite_size.y,
                 });
 
                 children.append(group->get_ref());
             } else if (command == "SpriteGroup"_s) {
-                auto name = reader.next_token();
-                auto filename = reader.next_token();
-                auto spriteSizeIn = V2I::read(reader);
+                auto name = lexer.consume_token();
+                lexer.discard_whitespace();
+                auto filename = lexer.consume_token();
+                lexer.discard_whitespace();
+                auto sprite_size_in = V2I::read_size(lexer);
+                lexer.discard_whitespace();
 
-                if (!all_have_values(name, filename, spriteSizeIn)) {
+                if (!all_have_values(name, filename, sprite_size_in)) {
                     return reader.make_error_message("Couldn't parse SpriteGroup. Expected: ':SpriteGroup identifier filename.png SWxSH'"_s);
                 }
 
-                textureAsset = asset_manager().add_asset(Texture::asset_type(), filename.release_value());
-                spriteSize = spriteSizeIn.release_value();
+                texture_asset = asset_manager().add_asset(Texture::asset_type(), filename.release_value());
+                sprite_size = sprite_size_in.release_value();
 
                 s32 spriteCount = reader.count_occurrences_of_property_in_current_command("sprite"_s);
                 if (spriteCount < 1) {
@@ -165,44 +180,47 @@ ErrorOr<OwnedRef<Asset>> load_sprite_defs(AssetMetadata& metadata, Blob data)
 
                 children.append(current_sprite_group_metadata->get_ref());
             } else {
-                return reader.make_error_message("Unrecognised command: '{0}'"_s, { command });
+                return reader.make_error_message("Unrecognised command. Only :Sprite and :SpriteGroup are supported."_s);
             }
-        } else // Properties!
-        {
-            if (current_sprite_group_metadata == nullptr)
-                return reader.make_error_message("Found a property outside of a :SpriteGroup!"_s);
+            continue;
+        }
 
-            if (command == "border"_s) {
-                auto borderW = reader.read_int<s32>();
-                auto borderH = reader.read_int<s32>();
-                if (borderW.has_value() && borderH.has_value()) {
-                    spriteBorder = v2i(borderW.release_value(), borderH.release_value());
-                } else {
-                    return reader.make_error_message("Couldn't parse border. Expected 'border width height'."_s);
-                }
-            } else if (command == "sprite"_s) {
-                auto mx = reader.read_int<s32>();
-                auto my = reader.read_int<s32>();
+        // Properties!
+        auto maybe_property = lexer.consume_token();
+        if (!maybe_property.has_value())
+            continue;
+        auto property_name = maybe_property.release_value();
+        lexer.discard_whitespace();
 
-                if (mx.has_value() && my.has_value()) {
-                    s32 x = mx.release_value();
-                    s32 y = my.release_value();
+        if (current_sprite_group_metadata == nullptr)
+            return reader.make_error_message("Found a property outside of a :SpriteGroup!"_s);
 
-                    auto& group_asset = dynamic_cast<SpriteGroup&>(*current_sprite_group_metadata->loaded_asset);
-                    group_asset.sprites.append({
-                        .texture = textureAsset,
-                        .uv = { spriteBorder.x + x * (spriteSize.x + spriteBorder.x + spriteBorder.x),
-                            spriteBorder.y + y * (spriteSize.y + spriteBorder.y + spriteBorder.y),
-                            spriteSize.x, spriteSize.y },
-                        .pixelWidth = spriteSize.x,
-                        .pixelHeight = spriteSize.y,
-                    });
-                } else {
-                    return reader.make_error_message("Couldn't parse {0}. Expected '{0} x y'."_s, { command });
-                }
-            } else {
-                return reader.make_error_message("Unrecognised command '{0}'"_s, { command });
-            }
+        if (property_name == "border"_s) {
+            auto border_size = V2I::read_size(lexer);
+            lexer.discard_whitespace();
+
+            if (!border_size.has_value() || lexer.has_next())
+                return reader.make_error_message("Couldn't parse border. Expected 'border WIDTHxHEIGHT'."_s);
+
+            sprite_border = border_size.release_value();
+        } else if (property_name == "sprite"_s) {
+            auto position = V2I::read_position(lexer);
+            lexer.discard_whitespace();
+
+            if (!position.has_value() || lexer.has_next())
+                return reader.make_error_message("Couldn't parse {0}. Expected '{0} X,Y'."_s, { property_name });
+
+            auto& group_asset = dynamic_cast<SpriteGroup&>(*current_sprite_group_metadata->loaded_asset);
+            group_asset.sprites.append({
+                .texture = texture_asset,
+                .uv = { sprite_border.x + position.value().x * (sprite_size.x + sprite_border.x + sprite_border.x),
+                    sprite_border.y + position.value().y * (sprite_size.y + sprite_border.y + sprite_border.y),
+                    sprite_size.x, sprite_size.y },
+                .pixelWidth = sprite_size.x,
+                .pixelHeight = sprite_size.y,
+            });
+        } else {
+            return reader.make_error_message("Unrecognised property '{0}'"_s, { property_name });
         }
     }
 
