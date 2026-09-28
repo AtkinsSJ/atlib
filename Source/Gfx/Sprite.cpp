@@ -172,11 +172,22 @@ ErrorOr<OwnedRef<Asset>> load_sprite_defs(AssetMetadata& metadata, Blob data)
                 texture_asset = asset_manager().add_asset(Texture::asset_type(), filename.release_value());
                 sprite_size = sprite_size_in.release_value();
 
-                s32 spriteCount = reader.count_occurrences_of_property_in_current_command("sprite"_s);
-                if (spriteCount < 1) {
-                    return reader.make_error_message("SpriteGroup must contain at least 1 sprite!"_s);
+                auto sprite_count = 0u;
+                {
+                    auto saved_position = reader.save_state();
+                    while (reader.load_next_line()) {
+                        Lexer variant_lexer { reader.current_line() };
+                        if (variant_lexer.consume_specific(':'))
+                            break; // Next command
+                        if (variant_lexer.consume_token() == "sprite"_sv)
+                            sprite_count++;
+                    }
+                    reader.restore_state(saved_position);
                 }
-                current_sprite_group_metadata = add_sprite_group(name.release_value(), spriteCount);
+
+                if (sprite_count < 1)
+                    return reader.make_error_message("SpriteGroup must contain at least 1 sprite!"_s);
+                current_sprite_group_metadata = add_sprite_group(name.release_value(), sprite_count);
 
                 children.append(current_sprite_group_metadata->get_ref());
             } else {
