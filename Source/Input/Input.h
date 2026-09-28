@@ -7,6 +7,7 @@
 #pragma once
 
 #include <Gfx/Forward.h>
+#include <Input/ModifierKey.h>
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_keycode.h>
 #include <SDL2/SDL_mouse.h>
@@ -33,14 +34,6 @@ enum class MouseButton : u8 {
     X1 = SDL_BUTTON_X1,
     X2 = SDL_BUTTON_X2,
     COUNT
-};
-
-enum class ModifierKey : u8 {
-    Alt,
-    Ctrl,
-    Shift,
-    Super,
-    COUNT,
 };
 
 struct InputState {

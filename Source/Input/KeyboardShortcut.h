@@ -6,14 +6,14 @@
 
 #pragma once
 
-#include <Input/Input.h>
+#include <Input/ModifierKey.h>
 #include <SDL2/SDL_keycode.h>
+#include <Util/ErrorOr.h>
 #include <Util/Flags.h>
-#include <Util/Optional.h>
 
-struct KeyboardShortcut {
+class KeyboardShortcut {
 public:
-    static Optional<KeyboardShortcut> from_string(StringView);
+    static ErrorOr<KeyboardShortcut> read(Lexer&);
 
     bool was_just_pressed() const;
 
