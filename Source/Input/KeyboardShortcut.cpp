@@ -8,8 +8,6 @@
 
 #include <Input/Input.h>
 #include <Util/Lexer.h>
-#include <Util/Log.h>
-#include <Util/TokenReader.h>
 
 /**
  * NB: Right now, we only support a very small number of shortcut key types.

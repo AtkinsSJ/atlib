@@ -23,7 +23,6 @@ class String;
 class StringBase;
 class StringTable;
 class StringView;
-class TokenReader;
 struct V2;
 struct V2I;
 struct V3;
