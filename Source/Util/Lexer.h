@@ -102,7 +102,7 @@ public:
         });
     }
 
-    template<FloatingPoint F>
+    template<FloatingPoint F = float>
     Optional<F> consume_float()
     {
         return consume_with_callback<F>([](Lexer& lexer) -> Optional<F> {
