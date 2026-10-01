@@ -25,19 +25,16 @@ struct CommandShortcut {
 
 struct Console;
 
-using CommandFunction = void (*)(Console&, s32 argument_count, StringView arguments);
+using CommandFunction = void (*)(Console&, Lexer& arguments);
 struct Command {
     String name;
     CommandFunction function;
-    s32 minArgs, maxArgs;
 
     Command() = default;
-    Command(String name, CommandFunction function, s32 minArgs = 0, s32 maxArgs = 0)
+    Command(String name, CommandFunction function)
     {
         this->name = name;
         this->function = function;
-        this->minArgs = minArgs;
-        this->maxArgs = maxArgs;
     }
 };
 

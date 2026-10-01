@@ -17,7 +17,6 @@
 #include <UI/TextInput.h>
 #include <UI/Toast.h>
 #include <Util/Lexer.h>
-#include <Util/TokenReader.h>
 
 static Console theConsole;
 
@@ -260,40 +259,22 @@ void consoleHandleCommand(Console* console, StringView commandInput)
         console->inputHistory.append(console->inputHistory.memoryArena->allocate_string(commandInput));
         console->inputHistoryCursor = -1;
 
-        TokenReader tokens { commandInput };
-        if (auto token_count = tokens.remaining_token_count(); token_count > 0) {
-            auto firstToken = tokens.next_token().release_value();
+        Lexer lexer { commandInput };
+        if (auto command_token = lexer.consume_token(); command_token.has_value()) {
+            lexer.discard_whitespace();
 
             // Find the command
-            auto command = console->commands.get(firstToken.deprecated_to_string());
+            auto command = console->commands.get(command_token.value().deprecated_to_string());
 
             // Run the command
             if (command.has_value()) {
-                auto argCount = token_count - 1;
-                bool tooManyArgs = (argCount > command->maxArgs) && (command->maxArgs != -1);
-                if ((argCount < command->minArgs) || tooManyArgs) {
-                    if (command->minArgs == command->maxArgs) {
-                        consoleWriteLine(myprintf("Command '{0}' requires exactly {1} argument(s), but {2} given."_s,
-                                             { firstToken, formatInt(command->minArgs), formatInt(argCount) }),
-                            ConsoleLineStyle::Error);
-                    } else if (command->maxArgs == -1) {
-                        consoleWriteLine(myprintf("Command '{0}' requires at least {1} argument(s), but {2} given."_s,
-                                             { firstToken, formatInt(command->minArgs), formatInt(argCount) }),
-                            ConsoleLineStyle::Error);
-                    } else {
-                        consoleWriteLine(myprintf("Command '{0}' requires between {1} and {2} arguments, but {3} given."_s,
-                                             { firstToken, formatInt(command->minArgs), formatInt(command->maxArgs), formatInt(argCount) }),
-                            ConsoleLineStyle::Error);
-                    }
-                } else {
-                    u32 commandStartTime = SDL_GetTicks();
-                    command->function(*console, argCount, tokens.remaining_input());
-                    u32 commandEndTime = SDL_GetTicks();
+                u32 commandStartTime = SDL_GetTicks();
+                command->function(*console, lexer);
+                u32 commandEndTime = SDL_GetTicks();
 
-                    consoleWriteLine(myprintf("Command executed in {0}ms"_s, { formatInt(commandEndTime - commandStartTime) }));
-                }
+                consoleWriteLine(myprintf("Command executed in {0}ms"_s, { formatInt(commandEndTime - commandStartTime) }));
             } else {
-                consoleWriteLine(myprintf("I don't understand '{0}'. Try 'help' for a list of commands."_s, { firstToken }), ConsoleLineStyle::Error);
+                consoleWriteLine(myprintf("I don't understand '{0}'. Try 'help' for a list of commands."_s, { command_token.value() }), ConsoleLineStyle::Error);
             }
         }
     }
@@ -342,7 +323,7 @@ void Console::before_assets_unloaded()
     commandShortcuts.clear();
 }
 
-#define ConsoleCommand(name) static void cmd_##name([[maybe_unused]] Console& console, [[maybe_unused]] s32 argumentsCount, [[maybe_unused]] StringView arguments)
+#define ConsoleCommand(name) static void cmd_##name([[maybe_unused]] Console& console, [[maybe_unused]] Lexer& arguments)
 ConsoleCommand(exit)
 {
     consoleWriteLine("Quitting game..."_s, ConsoleLineStyle::Success);
@@ -378,7 +359,7 @@ ConsoleCommand(setting)
 {
     auto& settings = *Settings::the().settings;
 
-    if (argumentsCount == 0) {
+    if (!arguments.has_next()) {
         consoleWriteLine("Available settings:"_s, ConsoleLineStyle::Success);
         settings.for_each_setting([](auto& setting) {
             consoleWriteLine(setting.name(), ConsoleLineStyle::Success);
@@ -386,15 +367,13 @@ ConsoleCommand(setting)
         return;
     }
 
-    Lexer lexer { arguments };
-
-    auto maybe_setting_name = lexer.consume_token();
+    auto maybe_setting_name = arguments.consume_token();
     if (!maybe_setting_name.has_value()) {
         consoleWriteLine("Missing setting name."_s, ConsoleLineStyle::Error);
         return;
     }
     auto setting_name = maybe_setting_name.release_value();
-    lexer.discard_whitespace();
+    arguments.discard_whitespace();
     auto maybe_setting = settings.get_setting(setting_name.deprecated_to_string());
     if (!maybe_setting.has_value()) {
         consoleWriteLine(myprintf("Unrecognized setting name '{}'."_s, { setting_name }), ConsoleLineStyle::Error);
@@ -402,12 +381,12 @@ ConsoleCommand(setting)
     }
     auto& setting = *maybe_setting.release_value();
 
-    if (argumentsCount == 1) {
+    if (!arguments.has_next()) {
         consoleWriteLine(myprintf("{} is {}"_s, { setting_name, setting.serialize_value() }), ConsoleLineStyle::Success);
         return;
     }
 
-    if (setting.read(lexer)) {
+    if (setting.read(arguments)) {
         Settings::the().apply();
         consoleWriteLine(myprintf("Set {} to {}"_s, { setting_name, setting.serialize_value() }), ConsoleLineStyle::Success);
     } else {
@@ -419,56 +398,65 @@ ConsoleCommand(speed)
 {
     auto& app = App::the();
 
-    if (argumentsCount == 0) {
+    if (!arguments.has_next()) {
         consoleWriteLine(myprintf("Current game speed: {0}"_s, { formatFloat(app.speed_multiplier(), 3) }), ConsoleLineStyle::Success);
-    } else {
-        TokenReader tokens { arguments };
-        if (auto speed_multiplier = tokens.next_token().value().to_float(); speed_multiplier.has_value()) {
-            float multiplier = speed_multiplier.value();
-            app.set_speed_multiplier(multiplier);
-            consoleWriteLine(myprintf("Set speed to {0}"_s, { formatFloat(multiplier, 3) }), ConsoleLineStyle::Success);
-            return;
-        }
-        consoleWriteLine("Usage: speed (multiplier), where multiplier is a float, or with no argument to list the current speed"_s, ConsoleLineStyle::Error);
+        return;
     }
+
+    auto speed_multiplier = arguments.consume_float();
+    arguments.discard_whitespace();
+    if (speed_multiplier.has_value() && !arguments.has_next()) {
+        float multiplier = speed_multiplier.value();
+        app.set_speed_multiplier(multiplier);
+        consoleWriteLine(myprintf("Set speed to {0}"_s, { formatFloat(multiplier, 3) }), ConsoleLineStyle::Success);
+        return;
+    }
+
+    consoleWriteLine("Usage: `speed [MULTIPLIER]`, where MULTIPLIER is a float, or with no argument to list the current speed"_s, ConsoleLineStyle::Error);
 }
 
 ConsoleCommand(toast)
 {
-    UI::Toast::show(arguments);
+    auto text = arguments.consume_remainder();
+    if (!text.has_value()) {
+        consoleWriteLine("Usage: `toast TEXT GOES HERE`"_s, ConsoleLineStyle::Error);
+        return;
+    }
+    UI::Toast::show(text.release_value());
 }
 
 ConsoleCommand(zoom)
 {
     auto& renderer = the_renderer();
 
-    if (argumentsCount == 0) {
+    if (!arguments.has_next()) {
         // list the zoom
         float zoom = renderer.world_camera().zoom();
         consoleWriteLine(myprintf("Current zoom is {0}"_s, { formatFloat(zoom, 3) }), ConsoleLineStyle::Success);
-    } else if (argumentsCount == 1) {
+    } else {
         // set the zoom
-        TokenReader tokens { arguments };
-        if (auto requested_zoom = tokens.next_token().value().to_float(); requested_zoom.has_value()) {
+        auto requested_zoom = arguments.consume_float();
+        arguments.discard_whitespace();
+        if (requested_zoom.has_value() && !arguments.has_next()) {
             float newZoom = requested_zoom.release_value();
             renderer.world_camera().set_zoom(newZoom);
             consoleWriteLine(myprintf("Set zoom to {0}"_s, { formatFloat(newZoom, 3) }), ConsoleLineStyle::Success);
             return;
         }
-        consoleWriteLine("Usage: zoom (scale), where scale is a float, or with no argument to list the current zoom"_s, ConsoleLineStyle::Error);
+        consoleWriteLine("Usage: `zoom [SCALE]`, where SCALE is a float, or with no argument to list the current zoom"_s, ConsoleLineStyle::Error);
     }
 }
 #undef ConsoleCommand
 
 void Console::register_default_commands()
 {
-    register_command(Command { "help"_s, cmd_help, 0, 0 });
-    register_command(Command { "exit"_s, cmd_exit, 0, 0 });
-    register_command(Command { "hello"_s, cmd_hello, 0, 0 });
-    register_command(Command { "reload_assets"_s, cmd_reload_assets, 0, 0 });
-    register_command(Command { "reload_settings"_s, cmd_reload_settings, 0, 0 });
-    register_command(Command { "setting"_s, cmd_setting, 0, -1 });
-    register_command(Command { "speed"_s, cmd_speed, 0, 1 });
-    register_command(Command { "toast"_s, cmd_toast, 1, -1 });
-    register_command(Command { "zoom"_s, cmd_zoom, 0, 1 });
+    register_command(Command { "help"_s, cmd_help });
+    register_command(Command { "exit"_s, cmd_exit });
+    register_command(Command { "hello"_s, cmd_hello });
+    register_command(Command { "reload_assets"_s, cmd_reload_assets });
+    register_command(Command { "reload_settings"_s, cmd_reload_settings });
+    register_command(Command { "setting"_s, cmd_setting });
+    register_command(Command { "speed"_s, cmd_speed });
+    register_command(Command { "toast"_s, cmd_toast });
+    register_command(Command { "zoom"_s, cmd_zoom });
 }
