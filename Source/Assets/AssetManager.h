@@ -66,7 +66,6 @@ struct AssetManager final
     // FIXME: TextCatalogue?
     HashMap<String, String> texts;
     HashMap<String, String> defaultTexts; // "en" locale
-    HashSet<String> missingTextIDs;
 
     ChunkedArray<AssetManagerListener*> listeners;
     void register_listener(AssetManagerListener*);
@@ -102,6 +101,8 @@ struct AssetManager final
         }
     }
 
+    String get_text(String const& name) const;
+
 private:
     // ^SettingsChangeListener
     virtual void on_settings_changed(Settings const&) override;
@@ -116,6 +117,8 @@ private:
     AssetType m_next_asset_type { 0 };
 
     Locale m_locale { Locale::En };
+
+    mutable HashSet<String> m_missing_text_ids;
 };
 
 void initAssets(String assets_directory = "assets"_s);

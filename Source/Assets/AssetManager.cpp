@@ -263,7 +263,7 @@ void AssetManager::reload()
         type_data.missing_asset_names.clear();
     }
 
-    missingTextIDs.clear();
+    m_missing_text_ids.clear();
 
     // Regenerate asset catalogue
     allAssets.clear();
@@ -293,7 +293,7 @@ AssetMetadata* getAssetIfExists(AssetType type, String shortName)
     return asset.value_or(nullptr);
 }
 
-String getText(String name)
+String AssetManager::get_text(String const& name) const
 {
     DEBUG_FUNCTION();
 
@@ -301,11 +301,11 @@ String getText(String name)
 
     String result = name;
 
-    if (auto found_text = s_assets->texts.get(name); found_text.has_value()) {
+    if (auto found_text = texts.get(name); found_text.has_value()) {
         result = found_text.release_value();
     } else {
         // Try to fall back to english if possible
-        auto default_text = s_assets->defaultTexts.get(name);
+        auto default_text = defaultTexts.get(name);
         if (default_text.has_value()) {
             result = default_text.release_value();
         }
@@ -329,17 +329,22 @@ String getText(String name)
         // What we're doing for now is to only report a missing text if it's not in the missingTextIDs
         // set. (And then add it.)
 
-        if (!s_assets->missingTextIDs.contains(name)) {
+        if (!m_missing_text_ids.contains(name)) {
             if (default_text.has_value()) {
-                logWarn("Locale {0} is missing text for '{1}'. (Fell back to using the default locale.)"_s, { to_string(s_assets->locale()), name });
+                logWarn("Locale {0} is missing text for '{1}'. (Fell back to using the default locale.)"_s, { to_string(locale()), name });
             } else {
-                logWarn("Locale {0} is missing text for '{1}'. (No default found!)"_s, { to_string(s_assets->locale()), name });
+                logWarn("Locale {0} is missing text for '{1}'. (No default found!)"_s, { to_string(locale()), name });
             }
-            s_assets->missingTextIDs.put(name);
+            m_missing_text_ids.put(name);
         }
     }
 
     return result;
+}
+
+String getText(String name)
+{
+    return asset_manager().get_text(name);
 }
 
 String getText(String name, std::initializer_list<StringView> args)
@@ -414,7 +419,7 @@ AssetMetadata& AssetManager::get_placeholder_asset(AssetType type)
 void AssetManager::on_settings_changed(Settings const& settings)
 {
     // Clear the list of missing texts because they might not be missing in the new locale!
-    missingTextIDs.clear();
+    m_missing_text_ids.clear();
 
     // Unload locale-dependent assets
     for (auto it = allAssets.iterate(); it.hasNext(); it.next()) {
