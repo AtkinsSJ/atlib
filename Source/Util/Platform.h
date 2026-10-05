@@ -20,6 +20,5 @@
 #    define OS_WINDOWS 0
 #endif
 
-#include <Util/Forward.h>
-
+class StringView;
 void open_url_unsafe(StringView url);

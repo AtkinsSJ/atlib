@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <Util/Basic.h>
+
 class Allocator;
 class BitArray;
 class BitArrayIterator;
@@ -66,3 +68,8 @@ class Stack;
 
 template<typename T>
 using ReadonlySpan = Span<T const>;
+
+template<typename T>
+class Position;
+using IntPosition = Position<s32>;
+using FloatPosition = Position<float>;
