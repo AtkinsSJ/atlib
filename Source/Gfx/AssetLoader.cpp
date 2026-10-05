@@ -5,7 +5,9 @@
  */
 
 #include "AssetLoader.h"
+
 #include <Assets/AssetManager.h>
+#include <Gfx/AnimatedSprite.h>
 #include <Gfx/BitmapFont.h>
 #include <Gfx/Cursor.h>
 #include <Gfx/Ninepatch.h>
@@ -26,14 +28,16 @@ void AssetLoader::register_types(AssetManager& assets)
     m_cursor_defs_type = assets.register_asset_type("CursorDefs"_s, *this, { .file_extension = "cursors"_sv });
     Cursor::set_asset_type(assets.register_asset_type("Cursor"_s, *this, {}));
 
+    Ninepatch::set_asset_type(assets.register_asset_type("Ninepatch"_s, *this, {}));
+
     m_palette_defs_type = assets.register_asset_type("PaletteDefs"_s, *this, { .file_extension = "palettes"_sv });
     Palette::set_asset_type(assets.register_asset_type("Palette"_s, *this, {}));
 
     Shader::set_asset_type(assets.register_asset_type("Shader"_s, *this, { .directory = "shaders"_sv }));
 
     m_sprite_defs_type = assets.register_asset_type("SpriteDefs"_s, *this, { .file_extension = "sprites"_sv });
+    SpriteAnimation::set_asset_type(assets.register_asset_type("SpriteAnimation"_s, *this, {}));
     SpriteGroup::set_asset_type(assets.register_asset_type("Sprite"_s, *this, {}));
-    Ninepatch::set_asset_type(assets.register_asset_type("Ninepatch"_s, *this, {}));
 
     TextDocument::set_asset_type(assets.register_asset_type("TextDocument"_s, *this, { .file_extension = "txt"_sv }));
 
@@ -52,6 +56,9 @@ void AssetLoader::create_placeholder_assets(AssetManager& assets)
     assets.set_placeholder_asset(Shader::asset_type(), Shader::make_placeholder());
     assets.set_placeholder_asset(SpriteGroup::asset_type(), SpriteGroup::make_placeholder());
     assets.set_placeholder_asset(TextDocument::asset_type(), adopt_own(*new TextDocument));
+
+    // NB: Relies on SpriteGroup placeholder
+    assets.set_placeholder_asset(SpriteAnimation::asset_type(), SpriteAnimation::make_placeholder());
 }
 
 Optional<String> AssetLoader::make_asset_path(AssetManager const& assets, AssetType type, StringView short_name)

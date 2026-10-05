@@ -5,9 +5,11 @@
  */
 
 #include "Sprite.h"
+
 #include <Assets/AssetManager.h>
 #include <Assets/AssetRef.h>
 #include <Assets/ContainerAsset.h>
+#include <Gfx/AnimatedSprite.h>
 #include <Gfx/Ninepatch.h>
 #include <Gfx/Texture.h>
 #include <IO/LineReader.h>
@@ -46,6 +48,11 @@ Sprite& SpriteRef::get() const
     return *m_pointer;
 }
 
+Sprite const& SpriteGroup::get_sprite(u32 index) const
+{
+    return sprites.get(index % sprites.count());
+}
+
 static AssetMetadata* add_sprite_group(StringView name, s32 spriteCount)
 {
     ASSERT(spriteCount > 0); // Must have a positive number of sprites in a Sprite Group!
@@ -66,6 +73,24 @@ static AssetMetadata* add_ninepatch(StringView name, StringView filename, s32 pu
 
     AssetMetadata* metadata = asset_manager().add_asset(Ninepatch::asset_type(), name, {});
     metadata->loaded_asset = adopt_own(*new Ninepatch(*texture_metadata, pu0, pu1, pu2, pu3, pv0, pv1, pv2, pv3));
+    metadata->state = AssetMetadata::State::Loaded;
+    return metadata;
+}
+
+static AssetMetadata* add_sprite_animation(StringView name, StringView sprite_group_name, ChunkedArray<u32>& frames, float seconds_per_frame)
+{
+    ASSERT(!frames.is_empty());
+
+    AssetMetadata* metadata = asset_manager().add_asset(SpriteAnimation::asset_type(), name, {});
+
+    auto flattened_frames = asset_manager().allocate_array<u32>(frames.count);
+    for (auto it = frames.iterate(); it.hasNext(); it.next()) {
+        flattened_frames.append(it.get());
+    }
+
+    auto asset = adopt_own(*new SpriteAnimation(metadata->shortName, SpriteGroup::get_ref(sprite_group_name), flattened_frames, seconds_per_frame));
+
+    metadata->loaded_asset = move(asset);
     metadata->state = AssetMetadata::State::Loaded;
     return metadata;
 }
@@ -101,7 +126,32 @@ ErrorOr<OwnedRef<Asset>> load_sprite_defs(AssetMetadata& metadata, Blob data)
             texture_asset = nullptr;
             current_sprite_group_metadata = nullptr;
 
-            if (command == "Ninepatch"_s) {
+            if (command == "Animation"_s) {
+                auto name = lexer.consume_token();
+                lexer.discard_whitespace();
+                auto sprite_group_name = lexer.consume_token();
+                lexer.discard_whitespace();
+                ChunkedArray<u32> frames { temp_arena(), 100 };
+                while (lexer.has_next()) {
+                    if (auto frame = lexer.consume_int<u32>(); frame.has_value()) {
+                        frames.append(frame.release_value());
+                        if (lexer.consume_specific(','))
+                            continue;
+                    }
+                    break;
+                }
+                lexer.discard_whitespace();
+                auto seconds_per_frame = lexer.consume_float();
+                lexer.discard_whitespace();
+
+                if (!all_have_values(name, sprite_group_name, seconds_per_frame) || frames.is_empty() || lexer.has_next()) {
+                    return reader.make_error_message("Couldn't parse Animation. Expected: ':Animation NAME SPRITE_GROUP_NAME COMMA,SEPARATED,FRAME,INDICES SECONDS_PER_FRAME'"_s);
+                }
+
+                auto* sprite_animation = add_sprite_animation(name.release_value(), sprite_group_name.release_value(), frames, seconds_per_frame.release_value());
+                children.append(sprite_animation->get_ref());
+
+            } else if (command == "Ninepatch"_s) {
                 auto name = lexer.consume_token();
                 lexer.discard_whitespace();
                 auto filename = lexer.consume_token();

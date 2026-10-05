@@ -31,6 +31,8 @@ public:
 
     virtual void unload(AssetMetadata& metadata) override;
 
+    Sprite const& get_sprite(u32 index) const;
+
     Array<Sprite> sprites;
 };
 
