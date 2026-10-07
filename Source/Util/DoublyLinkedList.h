@@ -7,6 +7,7 @@
 #pragma once
 
 #include <Util/Assert.h>
+#include <Util/Badge.h>
 #include <Util/Basic.h>
 
 template<typename T>
@@ -15,6 +16,17 @@ class DoublyLinkedList;
 template<typename T>
 class DoublyLinkedListNode {
     friend DoublyLinkedList<T>;
+
+public:
+    void insert_other_before_this(DoublyLinkedListNode<T>& other)
+    {
+        auto* old_previous_node = m_previous_node;
+        other.m_previous_node = old_previous_node;
+        old_previous_node->m_next_node = &other;
+
+        other.m_next_node = this;
+        m_previous_node = &other;
+    }
 
 private:
     DoublyLinkedListNode* m_previous_node { this };
@@ -42,13 +54,7 @@ public:
 
     void add(DoublyLinkedListNode<T>& node)
     {
-        auto* previous_last_node = m_sentinel.m_previous_node;
-
-        node.m_previous_node = previous_last_node;
-        previous_last_node->m_next_node = &node;
-
-        node.m_next_node = &m_sentinel;
-        m_sentinel.m_previous_node = &node;
+        m_sentinel.insert_other_before_this(node);
     }
 
     void remove(DoublyLinkedListNode<T>& node)
@@ -61,6 +67,14 @@ public:
 
         node.m_previous_node = &node;
         node.m_next_node = &node;
+    }
+
+    T& remove_first()
+    {
+        ASSERT(!is_empty());
+        auto& node = *m_sentinel.m_next_node;
+        remove(node);
+        return static_cast<T&>(node);
     }
 
     T& remove_last()
@@ -90,6 +104,80 @@ public:
         // Clear other
         other.m_sentinel.m_previous_node = &other.m_sentinel;
         other.m_sentinel.m_next_node = &other.m_sentinel;
+    }
+
+    template<typename ValueT, typename NodeT>
+    class Iterator {
+    public:
+        Iterator(Badge<DoublyLinkedList>, NodeT& node)
+            : m_current_node(&node)
+        {
+        }
+
+        ValueT& operator*() { return static_cast<ValueT&>(*m_current_node); }
+        ValueT* operator->() { return static_cast<ValueT*>(m_current_node); }
+
+        Iterator& operator++()
+        {
+            m_current_node = m_current_node->m_next_node;
+            return *this;
+        }
+
+        Iterator operator++(int)
+        {
+            auto result = *this;
+            ++(*this);
+            return result;
+        }
+
+        Iterator& operator--()
+        {
+            m_current_node = m_current_node->m_previous_node;
+            return *this;
+        }
+
+        Iterator operator--(int)
+        {
+            auto result = *this;
+            --(*this);
+            return result;
+        }
+
+        bool operator==(Iterator const& other)
+        {
+            return m_current_node == other.m_current_node;
+        }
+
+        bool operator!=(Iterator const& other)
+        {
+            return !(*this == other);
+        }
+
+    private:
+        NodeT* m_current_node;
+    };
+
+    using MutableIterator = Iterator<T, DoublyLinkedListNode<T>>;
+    using ConstIterator = Iterator<T const, DoublyLinkedListNode<T> const>;
+
+    MutableIterator begin()
+    {
+        return MutableIterator({}, *m_sentinel.m_next_node);
+    }
+
+    MutableIterator end()
+    {
+        return MutableIterator({}, m_sentinel);
+    }
+
+    ConstIterator begin() const
+    {
+        return ConstIterator({}, *m_sentinel.m_next_node);
+    }
+
+    ConstIterator end() const
+    {
+        return ConstIterator({}, m_sentinel);
     }
 
 private:
