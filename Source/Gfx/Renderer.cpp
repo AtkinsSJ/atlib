@@ -43,8 +43,7 @@ Renderer::Renderer(SDL_Window* window)
 
     // Init cameras
     V2 camera_size = v2(m_window_size);
-    float const TILE_SIZE = 16.0f;
-    m_world_camera = Camera(camera_size, 1.0f / TILE_SIZE, 10000.0f, -10000.0f);
+    m_world_camera = Camera(camera_size, 1.0f, 10000.0f, -10000.0f);
     m_ui_camera = Camera(camera_size, 1.0f, 10000.0f, -10000.0f, camera_size * 0.5f);
 
     // Hide cursor until stuff loads
