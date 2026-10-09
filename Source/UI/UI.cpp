@@ -593,7 +593,13 @@ Optional<Rect2I> Scrollbar::thumb_bounds(Rect2I scrollbar_bounds, ScrollbarStyle
         if (viewportSize < m_content_size) {
             s32 trackSize = scrollbar_bounds.height();
             s32 desiredThumbSize = trackSize * viewportSize / (m_content_size + viewportSize);
-            s32 thumbHeight = clamp(desiredThumbSize, style.width, scrollbar_bounds.height());
+
+            // Ensure we maintain the `min <= max` invariant for `clamp()`.
+            // This can break during console animation, because the height of the scrollable area might be less than
+            // the style's requested size.
+            auto thumb_height_min = min(style.width, scrollbar_bounds.height());
+            auto thumb_height_max = min(style.width, scrollbar_bounds.height());
+            s32 thumbHeight = clamp(desiredThumbSize, thumb_height_min, thumb_height_max);
 
             s32 thumbPos = round_s32(m_scroll_percent * (scrollbar_bounds.height() - thumbHeight));
 
