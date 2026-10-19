@@ -8,6 +8,7 @@
 
 #include <Util/Concepts.h>
 #include <Util/Forward.h>
+#include <Util/Vector.h>
 
 template<typename T>
 class Position {
@@ -36,6 +37,17 @@ public:
     {
         return m_x == other.m_x
             && m_y == other.m_y;
+    }
+
+    operator V2I() const
+    requires(IsIntegral<T>)
+    {
+        return { static_cast<s32>(m_x), static_cast<s32>(m_y) };
+    }
+
+    operator V2() const
+    {
+        return { static_cast<float>(m_x), static_cast<float>(m_y) };
     }
 
 private:
