@@ -32,6 +32,12 @@ public:
     void set_x(T value) { m_x = value; }
     void set_y(T value) { m_y = value; }
 
+    bool operator==(Position const& other) const
+    {
+        return m_x == other.m_x
+            && m_y == other.m_y;
+    }
+
 private:
     T m_x;
     T m_y;
