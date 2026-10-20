@@ -14,10 +14,18 @@ float const radToDeg = 180.0f / PI32;
 float const degToRad = PI32 / 180.0f;
 
 // Standard rounding functions return doubles, so here's some int ones.
+enum class RoundTies : u8 {
+    TowardZero,
+    AwayFromZero,
+    Up,
+    Down,
+};
 s32 round_s32(float in);
+s32 round_s32(float in, RoundTies);
 s32 floor_s32(float in);
 s32 ceil_s32(float in);
 s32 abs_s32(s32 in);
+float round_float(float in, RoundTies);
 float round_float(float in);
 float floor_float(float in);
 float ceil_float(float in);

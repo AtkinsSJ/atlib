@@ -14,6 +14,11 @@ s32 round_s32(float in)
     return (s32)round(in);
 }
 
+s32 round_s32(float in, RoundTies round_ties)
+{
+    return static_cast<s32>(round_float(in, round_ties));
+}
+
 s32 floor_s32(float in)
 {
     return (s32)floor(in);
@@ -32,6 +37,28 @@ s32 abs_s32(s32 in)
 float round_float(float in)
 {
     return (float)round(in);
+}
+
+float round_float(float in, RoundTies round_ties)
+{
+    switch (round_ties) {
+    case RoundTies::TowardZero: {
+        float integral = 0.0f;
+        float fractional = modf(in, &integral);
+        if (fractional <= 0.5f)
+            return integral;
+        return integral + (in < 0.0f ? -1.0f : 1.0f);
+    }
+    case RoundTies::AwayFromZero: {
+        // NB: This is the default in C++, so just use roundf().
+        return roundf(in);
+    }
+    case RoundTies::Up:
+        return floorf(in + 0.5f);
+    case RoundTies::Down:
+        return ceilf(in - 0.5f);
+    }
+    VERIFY_NOT_REACHED();
 }
 
 float floor_float(float in)
