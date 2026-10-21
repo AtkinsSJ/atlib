@@ -32,7 +32,8 @@ namespace UI {
 
 class Scrollbar {
 public:
-    explicit Scrollbar(Orientation, s32 mouse_wheel_step_size = 64);
+    static constexpr s32 DEFAULT_MOUSE_WHEEL_STEP_SIZE = 64;
+    explicit Scrollbar(Orientation, s32 mouse_wheel_step_size = DEFAULT_MOUSE_WHEEL_STEP_SIZE);
     void reset();
 
     void place(s32 content_size, Rect2I bounds, ScrollbarStyle* = nullptr, bool is_disabled = false, RenderBuffer* = nullptr);
