@@ -45,7 +45,6 @@ void startFrame()
     if (!mouseButtonPressed(MouseButton::Left))
         uiState.drag_state = {};
 
-    windowSize = ui_camera.screen_rect().size();
     mousePos = v2i(ui_camera.mouse_position());
     if (mouseButtonPressed(MouseButton::Left)) {
         mouseClickStartPos = v2i(getClickStartPos(MouseButton::Left, &ui_camera));

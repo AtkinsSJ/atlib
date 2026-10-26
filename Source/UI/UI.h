@@ -99,7 +99,6 @@ inline UIState uiState;
 
 // Cached input values
 // These are updated in startFrame()
-inline V2I windowSize;
 inline V2I mousePos;
 inline V2I mouseClickStartPos;
 

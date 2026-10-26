@@ -32,12 +32,13 @@ bool Toast::update_and_draw(float delta_time)
     if (m_current_time_seconds >= m_duration_seconds)
         return true;
 
+    auto window_rect = the_renderer().ui_camera().screen_rect();
     auto& style = PanelStyle::get("toast"_s);
-    V2I origin = v2i(windowSize.x / 2, windowSize.y - 8);
+    V2I origin = v2i(window_rect.width() / 2, window_rect.height() - 8);
     auto text = m_buffer.view();
 
     auto& label_style = style.labelStyle.get();
-    s32 maxWidth = min(floor_s32(windowSize.x * 0.8f), 500);
+    s32 maxWidth = min(floor_s32(window_rect.width() * 0.8f), 500);
     V2I textSize = label_style.font.get().calculate_text_size(text, maxWidth - (style.padding.left + style.padding.right));
 
     V2I toastSize = v2i(

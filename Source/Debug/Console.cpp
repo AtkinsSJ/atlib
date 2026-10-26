@@ -190,7 +190,7 @@ void updateAndRenderConsole(Console* console)
     // Display the console
     if (console->currentHeight > 0) {
         RenderBuffer* renderBuffer = &renderer.debug_buffer();
-        s32 actualConsoleHeight = floor_s32(console->currentHeight * (float)UI::windowSize.y);
+        s32 actualConsoleHeight = floor_s32(console->currentHeight * (float)renderer.window_height());
         s32 screenWidth = renderer.window_width();
 
         UI::ConsoleStyle& consoleStyle = console->style.get();
@@ -242,7 +242,7 @@ void updateAndRenderConsole(Console* console)
             textPos.y -= (textSize.y + consoleStyle.contentPadding);
 
             // If we've gone off the screen, stop!
-            if ((textPos.y < 0) || (textPos.y > UI::windowSize.y)) {
+            if ((textPos.y < 0) || (textPos.y > renderer.window_height())) {
                 break;
             }
         }
