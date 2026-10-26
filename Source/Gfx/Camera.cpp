@@ -79,12 +79,12 @@ void Camera::update_projection_matrix()
 {
     float half_camera_width = m_size.x * 0.5f / m_zoom;
     float half_camera_height = m_size.y * 0.5f / m_zoom;
-    m_projection_matrix = orthographicMatrix4(
+    m_projection_matrix = Matrix4::orthographic(
         m_position.x - half_camera_width, m_position.x + half_camera_width,
         m_position.y - half_camera_height, m_position.y + half_camera_height,
         m_near_clipping_plane, m_far_clipping_plane);
 
-    m_inverse_projection_matrix = inverse(&m_projection_matrix);
+    m_inverse_projection_matrix = m_projection_matrix.inverse();
 }
 
 V2 Camera::unproject(V2 screen_position) const

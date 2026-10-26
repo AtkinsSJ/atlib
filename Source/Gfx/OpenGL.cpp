@@ -197,7 +197,7 @@ void Renderer::render_internal()
                 }
 
                 activeShader = use_shader(header->shaderID);
-                glUniformMatrix4fv(activeShader->uProjectionMatrixLoc, 1, false, currentCamera->projection_matrix().flat);
+                glUniformMatrix4fv(activeShader->uProjectionMatrixLoc, 1, false, currentCamera->projection_matrix().flat());
             } break;
 
             case RenderItemType::SetTexture: {

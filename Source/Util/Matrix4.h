@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2025, Sam Atkins <sam@samatkins.co.uk>
+ * Copyright (c) 2015-2026, Sam Atkins <sam@samatkins.co.uk>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -17,20 +17,25 @@
 //
 // TODO: When I move to 3D, implement full rotation of matrices!
 //
-struct Matrix4 {
-    union {
-        float v[4][4]; // Column-major order, so [COLUMN][ROW]
-        float flat[4 * 4];
-    };
+class Matrix4 {
+public:
+    static Matrix4 identity();
+    static Matrix4 orthographic(float left, float right, float top, float bottom, float near_clip, float far_clip);
+
+    Matrix4 inverse() const;
+
+    void translate(V3 const&);
+    void scale(V3 const&);
+    void rotate_z(float radians);
+
+    Matrix4 operator*(Matrix4 const& other) const;
+    Matrix4 operator*=(Matrix4 const& other);
+    V4 operator*(V4 const&) const;
+
+    float& at(u32 column, u32 row);
+    float at(u32 column, u32 row) const;
+    float const* flat() const { return m_flat; }
+
+private:
+    float m_flat[16] {}; // Column-major order, so equivalent to [COLUMN][ROW]
 };
-
-Matrix4 identityMatrix4();
-Matrix4 orthographicMatrix4(float left, float right, float top, float bottom, float nearClip, float farClip);
-Matrix4 inverse(Matrix4* source);
-void translate(Matrix4* matrix, V3 translation);
-void scale(Matrix4* matrix, V3 scale);
-void rotateZ(Matrix4* matrix, float radians);
-
-Matrix4 operator*(Matrix4 a, Matrix4 b);
-Matrix4 operator*=(Matrix4& a, Matrix4 b);
-V4 operator*(Matrix4 m, V4 v);
