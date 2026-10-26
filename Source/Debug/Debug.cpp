@@ -152,14 +152,14 @@ public:
         , m_h_align(horizontal_alignment)
         , m_font(font)
         , m_color(text_color)
-        , m_max_width(floor_s32(m_camera.size().x) - (2 * screen_edge_padding))
+        , m_max_width(m_camera.screen_rect().width() - (2 * screen_edge_padding))
         , m_progress_upwards(upwards)
         , m_text_shader_id(renderer.shaderIds.text)
         , m_untextured_shader_id(renderer.shaderIds.untextured)
     {
         switch (horizontal_alignment) {
         case HAlign::Right:
-            m_pos.x = ceil_s32(m_camera.size().x) - screen_edge_padding;
+            m_pos.x = m_camera.screen_rect().width() - screen_edge_padding;
             break;
         case HAlign::Left:
             // TODO: Implement these if we care.
@@ -170,7 +170,7 @@ public:
         }
 
         if (upwards) {
-            m_pos.y = ceil_s32(m_camera.size().y) - screen_edge_padding;
+            m_pos.y = m_camera.screen_rect().height() - screen_edge_padding;
         } else {
             m_pos.y = screen_edge_padding;
         }
@@ -242,15 +242,15 @@ void renderDebugData(DebugState* debugState)
 
     u64 cyclesPerSecond = SDL_GetPerformanceFrequency();
     u32 rfi = debugState->readingFrameIndex;
-    drawSingleRect(renderBuffer, Rect2 { 0.f, 0.f, ui_camera.size().x, ui_camera.size().y }, renderer.shaderIds.untextured, Colour::from_rgb_255(0, 0, 0, 128));
+    drawSingleRect(renderBuffer, Rect2 { 0, 0, ui_camera.screen_rect().width(), ui_camera.screen_rect().height() }, renderer.shaderIds.untextured, Colour::from_rgb_255(0, 0, 0, 128));
 
     // Draw a "nice" chart!
     {
-        float graphHeight = 150.0f;
-        drawSingleRect(renderBuffer, Rect2 { 0.f, ui_camera.size().y - graphHeight, ui_camera.size().x, 1.f }, renderer.shaderIds.untextured, Colour::from_rgb_255(255, 255, 255, 128));
-        drawSingleRect(renderBuffer, Rect2 { 0.f, ui_camera.size().y - graphHeight * 2, ui_camera.size().x, 1.f }, renderer.shaderIds.untextured, Colour::from_rgb_255(255, 255, 255, 128));
+        auto graphHeight = 150;
+        drawSingleRect(renderBuffer, Rect2 { 0, ui_camera.screen_rect().height() - graphHeight, ui_camera.screen_rect().width(), 1 }, renderer.shaderIds.untextured, Colour::from_rgb_255(255, 255, 255, 128));
+        drawSingleRect(renderBuffer, Rect2 { 0, ui_camera.screen_rect().height() - graphHeight * 2, ui_camera.screen_rect().width(), 1 }, renderer.shaderIds.untextured, Colour::from_rgb_255(255, 255, 255, 128));
         float targetCyclesPerFrame = cyclesPerSecond / 60.0f;
-        float barWidth = ui_camera.size().x / (float)DEBUG_FRAMES_COUNT;
+        float barWidth = ui_camera.screen_rect().width() / (float)DEBUG_FRAMES_COUNT;
         float barHeightPerCycle = graphHeight / targetCyclesPerFrame;
         Colour barColor = Colour::from_rgb_255(255, 0, 0, 128);
         Colour activeBarColor = Colour::from_rgb_255(255, 255, 0, 128);
@@ -261,7 +261,7 @@ void renderDebugData(DebugState* debugState)
             fi = wrap<u32>(fi + 1, DEBUG_FRAMES_COUNT)) {
             u64 frameCycles = debugState->frameEndCycle[fi] - debugState->frameStartCycle[fi];
             float barHeight = barHeightPerCycle * (float)frameCycles;
-            addUntexturedRect(rectsGroup, Rect2 { barWidth * barIndex++, ui_camera.size().y - barHeight, barWidth, barHeight }, fi == rfi ? activeBarColor : barColor);
+            addUntexturedRect(rectsGroup, Rect2 { barWidth * barIndex++, ui_camera.screen_rect().height() - barHeight, barWidth, barHeight }, fi == rfi ? activeBarColor : barColor);
         }
         endRectsGroup(rectsGroup);
     }

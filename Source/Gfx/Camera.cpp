@@ -4,18 +4,18 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-#include <Gfx/Camera.h>
+#include "Camera.h"
+
+#include <Gfx/Renderer.h>
 #include <Util/Maths.h>
 #include <Util/Rectangle.h>
 
-Camera::Camera(V2 size, float size_ratio, float near_clipping_plane, float far_clipping_plane, V2 position)
+Camera::Camera(Rect2I screen_rect, float near_clipping_plane, float far_clipping_plane, V2 position)
     : m_position(position)
-    , m_size(size * size_ratio)
-    , m_size_ratio(size_ratio)
+    , m_screen_rect(screen_rect)
     , m_near_clipping_plane(near_clipping_plane)
     , m_far_clipping_plane(far_clipping_plane)
 {
-    update_projection_matrix();
 }
 
 Camera::Camera() = default;
@@ -28,31 +28,6 @@ void Camera::set_position(V2 new_position)
 void Camera::move_by(V2 delta)
 {
     m_position += delta;
-}
-
-void Camera::snap_to_rectangle(Rect2 const bounds)
-{
-    V2 cameraSize = m_size / m_zoom;
-    if (bounds.width() < cameraSize.x) {
-        // City smaller than camera, so centre on it
-        m_position.x = bounds.width() * 0.5f;
-    } else {
-        float minX = (cameraSize.x * 0.5f);
-        m_position.x = clamp(m_position.x, minX, bounds.max_x() - minX);
-    }
-
-    if (bounds.height() < m_size.y / m_zoom) {
-        // City smaller than camera, so centre on it
-        m_position.y = bounds.height() * 0.5f;
-    } else {
-        float minY = (cameraSize.y * 0.5f);
-        m_position.y = clamp(m_position.y, minY, bounds.max_y() - minY);
-    }
-}
-
-void Camera::set_size(V2 new_size)
-{
-    m_size = new_size * m_size_ratio;
 }
 
 void Camera::set_zoom(float new_zoom)
@@ -70,6 +45,11 @@ float Camera::snap_zoom(float zoom)
     return clamp(round_float(10 * (zoom)) * 0.1f, 0.1f, 10.0f);
 }
 
+void Camera::set_screen_rect(Rect2I screen_rect)
+{
+    m_screen_rect = screen_rect;
+}
+
 void Camera::update_mouse_position(V2 input_mouse_position)
 {
     m_mouse_position = unproject(input_mouse_position);
@@ -77,11 +57,14 @@ void Camera::update_mouse_position(V2 input_mouse_position)
 
 void Camera::update_projection_matrix()
 {
-    float half_camera_width = m_size.x * 0.5f / m_zoom;
-    float half_camera_height = m_size.y * 0.5f / m_zoom;
+    float left_offset = ((static_cast<float>(m_screen_rect.width()) / 2.0f) + static_cast<float>(m_screen_rect.x())) / m_zoom;
+    float top_offset = ((static_cast<float>(m_screen_rect.height()) / 2.0f) + static_cast<float>(m_screen_rect.y())) / m_zoom;
+
     m_projection_matrix = Matrix4::orthographic(
-        m_position.x - half_camera_width, m_position.x + half_camera_width,
-        m_position.y - half_camera_height, m_position.y + half_camera_height,
+        m_position.x - left_offset,
+        m_position.x + (static_cast<float>(the_renderer().window_width()) / m_zoom) - left_offset,
+        m_position.y - top_offset,
+        m_position.y + (static_cast<float>(the_renderer().window_height()) / m_zoom) - top_offset,
         m_near_clipping_plane, m_far_clipping_plane);
 
     m_inverse_projection_matrix = m_projection_matrix.inverse();

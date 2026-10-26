@@ -169,7 +169,7 @@ void updateAndRenderWindows()
     auto& renderer = the_renderer();
 
     // This is weird, the UI camera should always be positioned with 0,0 being the bottom-left I thought?
-    Rect2I validWindowArea = Rect2I::create_centre_size(v2i(renderer.ui_camera().position()), v2i(renderer.ui_camera().size()));
+    Rect2I validWindowArea = renderer.ui_camera().screen_rect();
 
     uiState.isAPauseWindowOpen = false;
     s32 tooltipIndex = -1;
@@ -203,7 +203,7 @@ void updateAndRenderWindows()
 
         // Modal windows get a translucent colour over everything behind them
         if (isModal) {
-            drawSingleRect(window.renderBuffer, Rect2 { v2(0, 0), renderer.ui_camera().size() }, renderer.shaderIds.untextured, Colour::from_rgb_255(64, 64, 64, 128));
+            drawSingleRect(window.renderBuffer, renderer.ui_camera().screen_rect(), renderer.shaderIds.untextured, Colour::from_rgb_255(64, 64, 64, 128));
         }
 
         // If the window is new, make sure it has a valid area by running the WindowProc once

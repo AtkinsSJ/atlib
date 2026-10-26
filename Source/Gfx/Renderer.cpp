@@ -44,9 +44,9 @@ Renderer::Renderer(SDL_Window* window)
     m_render_buffers.append(m_debug_buffer);
 
     // Init cameras
-    V2 camera_size = v2(m_window_size);
-    m_world_camera = Camera(camera_size, 1.0f, 10000.0f, -10000.0f);
-    m_ui_camera = Camera(camera_size, 1.0f, 10000.0f, -10000.0f, camera_size * 0.5f);
+    Rect2I screen_rect { 0, 0, m_window_size.x, m_window_size.y };
+    m_world_camera = Camera(screen_rect, 10000.0f, -10000.0f);
+    m_ui_camera = Camera(screen_rect, 10000.0f, -10000.0f, v2(screen_rect.size()) * 0.5f);
 
     // Hide cursor until stuff loads
     set_cursor_visible(false);
@@ -97,12 +97,8 @@ void Renderer::handle_window_event(SDL_WindowEvent const& event)
             it.getValue()->on_window_resized(m_window_size.x, m_window_size.y);
         }
 
-        V2 camera_size = v2(m_window_size);
-
-        world_camera().set_size(camera_size);
-
-        ui_camera().set_size(camera_size);
-        ui_camera().set_position(ui_camera().size() * 0.5f);
+        ui_camera().set_position(v2(m_window_size) * 0.5f);
+        ui_camera().set_screen_rect({ 0, 0, m_window_size.x, m_window_size.y });
     } break;
     }
 }
