@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2025, Sam Atkins <sam@samatkins.co.uk>
+ * Copyright (c) 2015-2026, Sam Atkins <sam@samatkins.co.uk>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -9,12 +9,13 @@
 #include <Gfx/Colour.h>
 #include <Gfx/Forward.h>
 #include <Util/Basic.h>
+#include <Util/Matrix4.h>
 #include <Util/Rectangle.h>
 
 enum class RenderItemType : u8 {
     NextMemoryChunk,
 
-    SetCamera,
+    SetProjectionMatrix,
     SetPalette,
     SetShader,
     SetTexture,
@@ -29,8 +30,8 @@ enum class RenderItemType : u8 {
     DrawRings,
 };
 
-struct RenderItem_SetCamera {
-    Camera* camera;
+struct RenderItem_SetProjectionMatrix {
+    Matrix4 matrix;
 };
 
 struct RenderItem_SetPalette {

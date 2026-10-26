@@ -133,7 +133,7 @@ void Renderer::render_internal()
     DEBUG_FUNCTION_T(DebugCodeDataTag::Renderer);
 
     ShaderProgram* activeShader = nullptr;
-    Camera* currentCamera = nullptr;
+    Matrix4 projection_matrix = Matrix4::identity();
 
     for (auto const* buffer : m_render_buffers) {
         RenderBufferChunk* renderBufferChunk = buffer->firstChunk;
@@ -153,10 +153,10 @@ void Renderer::render_internal()
                 pos = 0;
             } break;
 
-            case RenderItemType::SetCamera: {
-                DEBUG_BLOCK_T("render: RenderItemType::SetCamera", DebugCodeDataTag::Renderer);
-                RenderItem_SetCamera* header = readRenderItem<RenderItem_SetCamera>(renderBufferChunk, &pos);
-                currentCamera = header->camera;
+            case RenderItemType::SetProjectionMatrix: {
+                DEBUG_BLOCK_T("render: RenderItemType::SetProjectionMatrix", DebugCodeDataTag::Renderer);
+                RenderItem_SetProjectionMatrix* header = readRenderItem<RenderItem_SetProjectionMatrix>(renderBufferChunk, &pos);
+                projection_matrix = header->matrix;
             } break;
 
             case RenderItemType::SetPalette: {
@@ -197,7 +197,7 @@ void Renderer::render_internal()
                 }
 
                 activeShader = use_shader(header->shaderID);
-                glUniformMatrix4fv(activeShader->uProjectionMatrixLoc, 1, false, currentCamera->projection_matrix().flat());
+                glUniformMatrix4fv(activeShader->uProjectionMatrixLoc, 1, false, projection_matrix.flat());
             } break;
 
             case RenderItemType::SetTexture: {

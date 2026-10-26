@@ -279,10 +279,10 @@ u8* appendRenderItemInternal(RenderBuffer* buffer, RenderItemType type, smm size
     return result;
 }
 
-void addSetCamera(RenderBuffer* buffer, Camera* camera)
+void addSetProjectionMatrix(RenderBuffer* buffer, Matrix4 const& matrix)
 {
-    RenderItem_SetCamera* cameraItem = appendRenderItem<RenderItem_SetCamera>(buffer, RenderItemType::SetCamera);
-    cameraItem->camera = camera;
+    RenderItem_SetProjectionMatrix* matrix_item = appendRenderItem<RenderItem_SetProjectionMatrix>(buffer, RenderItemType::SetProjectionMatrix);
+    matrix_item->matrix = matrix;
 }
 
 void addSetShader(RenderBuffer* buffer, s8 shaderID)

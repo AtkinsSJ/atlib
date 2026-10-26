@@ -178,7 +178,7 @@ T* readRenderData(RenderBufferChunk* renderBufferChunk, smm* pos, s32 count)
     return item;
 }
 
-void addSetCamera(RenderBuffer* buffer, Camera* camera);
+void addSetProjectionMatrix(RenderBuffer* buffer, Matrix4 const&);
 void addSetShader(RenderBuffer* buffer, s8 shaderID);
 void addSetTexture(RenderBuffer* buffer, AssetMetadata* texture);
 void addSetTextureRaw(RenderBuffer* buffer, s32 width, s32 height, u8 bytesPerPixel, u8* pixels);
