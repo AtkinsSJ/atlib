@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2025, Sam Atkins <sam@samatkins.co.uk>
+ * Copyright (c) 2015-2026, Sam Atkins <sam@samatkins.co.uk>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -12,9 +12,11 @@
 #include <Gfx/Colour.h>
 #include <Gfx/Forward.h>
 #include <Gfx/RenderBuffer.h>
+#include <Gfx/WindowResizeListener.h>
 #include <SDL2/SDL_events.h>
 #include <Settings/SettingsChangeListener.h>
 #include <Util/Basic.h>
+#include <Util/ChunkedArray.h>
 #include <Util/MemoryArena.h>
 #include <Util/Pool.h>
 #include <Util/Rectangle.h>
@@ -89,6 +91,9 @@ public:
     } shaderIds;
 
     virtual void on_window_resized(s32 width, s32 height) = 0;
+    void register_window_resize_listener(WindowResizeListener&);
+    void unregister_window_resize_listener(WindowResizeListener&);
+
     void render();
     virtual void render_internal() = 0;
     virtual void after_assets_loaded() override;
@@ -129,6 +134,8 @@ protected:
     String m_current_cursor_name {};
     bool m_cursor_is_visible { true };
     SDL_Cursor* m_system_wait_cursor { nullptr };
+
+    ChunkedArray<Ref<WindowResizeListener>> m_window_resize_listeners {};
 };
 
 Renderer& the_renderer();

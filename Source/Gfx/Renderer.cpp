@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2025, Sam Atkins <sam@samatkins.co.uk>
+ * Copyright (c) 2015-2026, Sam Atkins <sam@samatkins.co.uk>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -12,6 +12,7 @@
 #include <Gfx/Ninepatch.h>
 #include <Gfx/OpenGL.h>
 #include <Settings/Settings.h>
+#include <Util/Ref.h>
 
 static Renderer* s_renderer;
 
@@ -25,6 +26,7 @@ Renderer::Renderer(SDL_Window* window)
     , m_render_buffer_pool(m_arena)
     , m_render_buffer_chunk_pool(m_arena)
     , m_sdl_window(window)
+    , m_window_resize_listeners(m_arena, 32)
 {
     SDL_GetWindowSize(window, &m_window_size.x, &m_window_size.y);
 
@@ -57,6 +59,7 @@ Renderer::~Renderer()
         SDL_FreeCursor(m_system_wait_cursor);
         m_system_wait_cursor = nullptr;
     }
+    s_renderer = nullptr;
 }
 
 bool Renderer::initialize(SDL_Window* window)
@@ -90,6 +93,9 @@ void Renderer::handle_window_event(SDL_WindowEvent const& event)
         m_window_size = v2i(event.data1, event.data2);
 
         on_window_resized(m_window_size.x, m_window_size.y);
+        for (auto it = m_window_resize_listeners.iterate(); it.hasNext(); it.next()) {
+            it.getValue()->on_window_resized(m_window_size.x, m_window_size.y);
+        }
 
         V2 camera_size = v2(m_window_size);
 
@@ -99,6 +105,17 @@ void Renderer::handle_window_event(SDL_WindowEvent const& event)
         ui_camera().set_position(ui_camera().size() * 0.5f);
     } break;
     }
+}
+
+void Renderer::register_window_resize_listener(WindowResizeListener& listener)
+{
+    m_window_resize_listeners.append(listener);
+    listener.on_window_resized(window_width(), window_height());
+}
+
+void Renderer::unregister_window_resize_listener(WindowResizeListener& listener)
+{
+    m_window_resize_listeners.findAndRemove(Ref { listener });
 }
 
 void Renderer::render()
