@@ -198,7 +198,6 @@ void Renderer::render_internal()
 
                 activeShader = use_shader(header->shaderID);
                 glUniformMatrix4fv(activeShader->uProjectionMatrixLoc, 1, false, currentCamera->projection_matrix().flat);
-                glUniform1f(activeShader->uScaleLoc, currentCamera->zoom());
             } break;
 
             case RenderItemType::SetTexture: {
@@ -651,7 +650,6 @@ void loadShaderProgram(AssetMetadata* asset, ShaderProgram* glShader)
                 loadShaderUniform(glShader, "uPalette", &glShader->uPaletteLoc);
                 loadShaderUniform(glShader, "uProjectionMatrix", &glShader->uProjectionMatrixLoc);
                 loadShaderUniform(glShader, "uTexture", &glShader->uTextureLoc);
-                loadShaderUniform(glShader, "uScale", &glShader->uScaleLoc);
             }
         }
     } else {

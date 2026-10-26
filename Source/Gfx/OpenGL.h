@@ -44,7 +44,6 @@ struct ShaderProgram {
     GLint uPaletteLoc;
     GLint uProjectionMatrixLoc;
     GLint uTextureLoc;
-    GLint uScaleLoc;
 
     // Attributes
     GLint aPositionLoc;
