@@ -11,14 +11,21 @@
 #include <Util/Random.h>
 #include <Util/String.h>
 
-static App* s_app = nullptr;
+static OwnedPtr<App> s_app = nullptr;
 
-OwnedRef<App> App::initialize(float seconds_per_frame, OwnedRef<Scene> scene)
+App& App::initialize(float seconds_per_frame, OwnedRef<Scene> scene)
 {
     logInfo("Constructing app"_s);
     ASSERT(s_app == nullptr);
-    s_app = new App(seconds_per_frame, move(scene));
-    return adopt_own(*s_app);
+    s_app = OwnedPtr<App>::adopt(new App(seconds_per_frame, move(scene)));
+    return *s_app;
+}
+
+void App::destruct()
+{
+    // FIXME: This is a stop-gap measure until everything is fixed up.
+    //        We shouldn't need to close the app manually before the Renderer, but we currently do.
+    s_app = nullptr;
 }
 
 App& App::the()
@@ -37,8 +44,6 @@ App::App(float seconds_per_frame, OwnedRef<Scene> scene)
 App::~App()
 {
     logInfo("Destructing app"_s);
-    // FIXME: Clear s_app? Currently we can't because this code runs before the members are destructed, and they might rely on App::the().
-    //        (eg, GameScene's destructor does.)
 }
 
 void App::switch_to_scene(OwnedRef<Scene> scene)

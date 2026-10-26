@@ -12,7 +12,9 @@
 class App {
 public:
     // FIXME: Move SDL and window initialization into here. Maybe other things too.
-    static OwnedRef<App> initialize(float seconds_per_frame, OwnedRef<Scene>);
+    static App& initialize(float seconds_per_frame, OwnedRef<Scene>);
+    // FIXME: Temporary measure!
+    static void destruct();
     static App& the();
     ~App();
 
