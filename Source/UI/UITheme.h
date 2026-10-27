@@ -442,7 +442,7 @@ private:
 };
 
 void initStyleConstants();
-void assignStyleProperties(StyleType type, std::initializer_list<String> properties);
+void assignStyleProperties(String name, StyleType type, std::initializer_list<String> properties);
 
 ErrorOr<OwnedRef<Asset>> load_theme(AssetMetadata& metadata, Blob data);
 

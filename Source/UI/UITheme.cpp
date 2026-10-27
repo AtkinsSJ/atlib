@@ -371,135 +371,141 @@ void initStyleConstants()
     s_style_properties.set("widgetAlignment"_s, Property { .type = PropType::Alignment });
     s_style_properties.set("width"_s, Property { .type = PropType::Int });
 
-    assignStyleProperties(StyleType::Button, {
-                                                 "background"_s,
-                                                 "backgroundDisabled"_s,
-                                                 "backgroundHover"_s,
-                                                 "backgroundPressed"_s,
-                                                 "contentPadding"_s,
-                                                 "endIcon"_s,
-                                                 "endIconAlignment"_s,
-                                                 "font"_s,
-                                                 "padding"_s,
-                                                 "startIcon"_s,
-                                                 "startIconAlignment"_s,
-                                                 "textAlignment"_s,
-                                                 "textColor"_s,
-                                             });
-    assignStyleProperties(StyleType::Checkbox, {
-                                                   "background"_s,
-                                                   "backgroundDisabled"_s,
-                                                   "backgroundHover"_s,
-                                                   "backgroundPressed"_s,
-                                                   "check"_s,
-                                                   "checkDisabled"_s,
-                                                   "checkHover"_s,
-                                                   "checkSize"_s,
-                                                   "checkPressed"_s,
-                                                   "dropDownListStyle"_s,
-                                                   "padding"_s,
-                                               });
-    assignStyleProperties(StyleType::Console, {
-                                                  "background"_s,
-                                                  "font"_s,
-                                                  "outputTextColor"_s,
-                                                  "outputTextColorInputEcho"_s,
-                                                  "outputTextColorError"_s,
-                                                  "outputTextColorSuccess"_s,
-                                                  "outputTextColorWarning"_s,
-                                                  "padding"_s,
-                                                  "contentPadding"_s,
-                                                  "scrollbarStyle"_s,
-                                                  "textInputStyle"_s,
-                                              });
-    assignStyleProperties(StyleType::DropDownList, {
-                                                       "buttonStyle"_s,
-                                                       "panelStyle"_s,
-                                                   });
-    assignStyleProperties(StyleType::Label, {
-                                                "background"_s,
-                                                "font"_s,
-                                                "padding"_s,
-                                                "textColor"_s,
-                                                "textAlignment"_s,
-                                            });
-    assignStyleProperties(StyleType::Panel, {
-                                                "background"_s,
-                                                "buttonStyle"_s,
-                                                "checkboxStyle"_s,
-                                                "contentPadding"_s,
-                                                "dropDownListStyle"_s,
-                                                "labelStyle"_s,
-                                                "padding"_s,
-                                                "radioButtonStyle"_s,
-                                                "scrollbarStyle"_s,
-                                                "sliderStyle"_s,
-                                                "textInputStyle"_s,
-                                                "widgetAlignment"_s,
-                                            });
-    assignStyleProperties(StyleType::RadioButton, {
-                                                      "background"_s,
-                                                      "backgroundDisabled"_s,
-                                                      "backgroundHover"_s,
-                                                      "backgroundPressed"_s,
-                                                      "dot"_s,
-                                                      "dotDisabled"_s,
-                                                      "dotHover"_s,
-                                                      "dotPressed"_s,
-                                                      "dotSize"_s,
-                                                      "size"_s,
-                                                  });
-    assignStyleProperties(StyleType::Scrollbar, {
-                                                    "background"_s,
-                                                    "thumb"_s,
-                                                    "thumbDisabled"_s,
-                                                    "thumbHover"_s,
-                                                    "thumbPressed"_s,
-                                                    "width"_s,
-                                                });
-    assignStyleProperties(StyleType::Slider, {
-                                                 "track"_s,
-                                                 "trackThickness"_s,
-                                                 "thumb"_s,
-                                                 "thumbDisabled"_s,
-                                                 "thumbHover"_s,
-                                                 "thumbPressed"_s,
-                                                 "thumbSize"_s,
-                                             });
-    assignStyleProperties(StyleType::TextInput, {
-                                                    "background"_s,
-                                                    "caretFlashCycleDuration"_s,
-                                                    "font"_s,
-                                                    "padding"_s,
-                                                    "showCaret"_s,
-                                                    "textAlignment"_s,
-                                                    "textColor"_s,
-                                                });
-    assignStyleProperties(StyleType::Window, {
-                                                 "offsetFromMouse"_s,
-                                                 "panelStyle"_s,
-                                                 "titleBarButtonHoverColor"_s,
-                                                 "titleBarColor"_s,
-                                                 "titleBarColorInactive"_s,
-                                                 "titleBarHeight"_s,
-                                                 "titleLabelStyle"_s,
-                                             });
+    assignStyleProperties("Button"_s, StyleType::Button,
+        {
+            "background"_s,
+            "backgroundDisabled"_s,
+            "backgroundHover"_s,
+            "backgroundPressed"_s,
+            "contentPadding"_s,
+            "endIcon"_s,
+            "endIconAlignment"_s,
+            "font"_s,
+            "padding"_s,
+            "startIcon"_s,
+            "startIconAlignment"_s,
+            "textAlignment"_s,
+            "textColor"_s,
+        });
 
-    s_style_types_by_name.set("Button"_s, StyleType::Button);
-    s_style_types_by_name.set("Checkbox"_s, StyleType::Checkbox);
-    s_style_types_by_name.set("Console"_s, StyleType::Console);
-    s_style_types_by_name.set("DropDownList"_s, StyleType::DropDownList);
-    s_style_types_by_name.set("Label"_s, StyleType::Label);
-    s_style_types_by_name.set("Panel"_s, StyleType::Panel);
-    s_style_types_by_name.set("RadioButton"_s, StyleType::RadioButton);
-    s_style_types_by_name.set("Scrollbar"_s, StyleType::Scrollbar);
-    s_style_types_by_name.set("Slider"_s, StyleType::Slider);
-    s_style_types_by_name.set("TextInput"_s, StyleType::TextInput);
-    s_style_types_by_name.set("Window"_s, StyleType::Window);
+    assignStyleProperties("Checkbox"_s, StyleType::Checkbox,
+        {
+            "background"_s,
+            "backgroundDisabled"_s,
+            "backgroundHover"_s,
+            "backgroundPressed"_s,
+            "check"_s,
+            "checkDisabled"_s,
+            "checkHover"_s,
+            "checkSize"_s,
+            "checkPressed"_s,
+            "dropDownListStyle"_s,
+            "padding"_s,
+        });
+
+    assignStyleProperties("Console"_s, StyleType::Console,
+        {
+            "background"_s,
+            "font"_s,
+            "outputTextColor"_s,
+            "outputTextColorInputEcho"_s,
+            "outputTextColorError"_s,
+            "outputTextColorSuccess"_s,
+            "outputTextColorWarning"_s,
+            "padding"_s,
+            "contentPadding"_s,
+            "scrollbarStyle"_s,
+            "textInputStyle"_s,
+        });
+
+    assignStyleProperties("DropDownList"_s, StyleType::DropDownList,
+        {
+            "buttonStyle"_s,
+            "panelStyle"_s,
+        });
+
+    assignStyleProperties("Label"_s, StyleType::Label,
+        {
+            "background"_s,
+            "font"_s,
+            "padding"_s,
+            "textColor"_s,
+            "textAlignment"_s,
+        });
+
+    assignStyleProperties("Panel"_s, StyleType::Panel,
+        {
+            "background"_s,
+            "buttonStyle"_s,
+            "checkboxStyle"_s,
+            "contentPadding"_s,
+            "dropDownListStyle"_s,
+            "labelStyle"_s,
+            "padding"_s,
+            "radioButtonStyle"_s,
+            "scrollbarStyle"_s,
+            "sliderStyle"_s,
+            "textInputStyle"_s,
+            "widgetAlignment"_s,
+        });
+
+    assignStyleProperties("RadioButton"_s, StyleType::RadioButton,
+        {
+            "background"_s,
+            "backgroundDisabled"_s,
+            "backgroundHover"_s,
+            "backgroundPressed"_s,
+            "dot"_s,
+            "dotDisabled"_s,
+            "dotHover"_s,
+            "dotPressed"_s,
+            "dotSize"_s,
+            "size"_s,
+        });
+    assignStyleProperties("Scrollbar"_s, StyleType::Scrollbar,
+        {
+            "background"_s,
+            "thumb"_s,
+            "thumbDisabled"_s,
+            "thumbHover"_s,
+            "thumbPressed"_s,
+            "width"_s,
+        });
+    assignStyleProperties("Slider"_s, StyleType::Slider,
+        {
+            "track"_s,
+            "trackThickness"_s,
+            "thumb"_s,
+            "thumbDisabled"_s,
+            "thumbHover"_s,
+            "thumbPressed"_s,
+            "thumbSize"_s,
+        });
+    assignStyleProperties("TextInput"_s, StyleType::TextInput,
+        {
+            "background"_s,
+            "caretFlashCycleDuration"_s,
+            "font"_s,
+            "padding"_s,
+            "showCaret"_s,
+            "textAlignment"_s,
+            "textColor"_s,
+        });
+    assignStyleProperties("Window"_s, StyleType::Window,
+        {
+            "offsetFromMouse"_s,
+            "panelStyle"_s,
+            "titleBarButtonHoverColor"_s,
+            "titleBarColor"_s,
+            "titleBarColorInactive"_s,
+            "titleBarHeight"_s,
+            "titleLabelStyle"_s,
+        });
 }
 
-void assignStyleProperties(StyleType type, std::initializer_list<String> properties)
+void assignStyleProperties(String name, StyleType type, std::initializer_list<String> properties)
 {
+    s_style_types_by_name.set(name, type);
     for (String* propName = (String*)properties.begin(); propName < properties.end(); propName++) {
         auto& property = s_style_properties.get(*propName).value();
         property.existsInStyle[type] = true;
