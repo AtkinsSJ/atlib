@@ -1,12 +1,13 @@
 add_library(UI STATIC
-        AssetLoader.cpp
-        Drawable.cpp
-        Panel.cpp
-        TextInput.cpp
-        Toast.cpp
-        UI.cpp
-        UITheme.cpp
-        Window.cpp
+    AssetLoader.cpp
+    Drawable.cpp
+    Panel.cpp
+    StatBar.cpp
+    TextInput.cpp
+    Toast.cpp
+    UI.cpp
+    UITheme.cpp
+    Window.cpp
 )
 target_include_directories(UI PUBLIC "..")
 target_link_libraries(UI PRIVATE Assets Debug Gfx Input Util)

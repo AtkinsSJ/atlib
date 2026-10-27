@@ -21,6 +21,7 @@ class RadioButtonStyle;
 class Scrollbar;
 class ScrollbarStyle;
 class SliderStyle;
+class StatBar;
 struct TextInput;
 class TextInputStyle;
 class Toast;
