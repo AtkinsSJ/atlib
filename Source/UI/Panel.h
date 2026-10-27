@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025, Sam Atkins <sam@samatkins.co.uk>
+ * Copyright (c) 2021-2026, Sam Atkins <sam@samatkins.co.uk>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -175,6 +175,8 @@ struct Panel {
     void addSprite(Sprite* sprite, s32 width = -1, s32 height = -1);
 
     bool addTextInput(TextInput* textInput, Optional<StringView> style_name = {});
+
+    void add_widget(Widget&);
 
     // Add a blank rectangle as if it were a widget. (So, leaving padding between
     // it and other widgets.) The bounds are returned so you can draw your own

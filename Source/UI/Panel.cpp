@@ -1,11 +1,13 @@
 /*
- * Copyright (c) 2021-2025, Sam Atkins <sam@samatkins.co.uk>
+ * Copyright (c) 2021-2026, Sam Atkins <sam@samatkins.co.uk>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #include "Panel.h"
+
 #include <UI/TextInput.h>
+#include <UI/Widget.h>
 #include <Util/String.h>
 
 namespace UI {
@@ -207,6 +209,21 @@ bool Panel::addTextInput(TextInput* textInput, Optional<StringView> style_name)
     completeWidget(widgetBounds.size());
 
     return result;
+}
+
+void Panel::add_widget(Widget& widget)
+{
+    DEBUG_FUNCTION_T(DebugCodeDataTag::UI);
+
+    prepareForWidgets();
+
+    Rect2I widget_bounds = calculateWidgetBounds([&widget](auto space, auto fill_width) { return widget.calculate_size(space, fill_width); });
+
+    if (!hideWidgets) {
+        widget.update_and_render(widget_bounds, *renderBuffer);
+    }
+
+    completeWidget(widget_bounds.size());
 }
 
 Rect2I Panel::addBlank(s32 width, s32 height)

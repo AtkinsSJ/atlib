@@ -25,6 +25,7 @@ struct TextInput;
 class TextInputStyle;
 class Toast;
 struct UIState;
+class Widget;
 struct WidgetMouseState;
 struct Window;
 struct WindowContext;
