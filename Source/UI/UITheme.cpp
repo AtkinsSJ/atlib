@@ -4,11 +4,13 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
+#include "UITheme.h"
+
 #include <Assets/AssetManager.h>
 #include <Assets/ContainerAsset.h>
 #include <Gfx/BitmapFont.h>
 #include <IO/LineReader.h>
-#include <UI/UITheme.h>
+#include <UI/StatBar.h>
 #include <Util/Lexer.h>
 
 namespace UI {
@@ -319,6 +321,8 @@ void initStyleConstants()
     s_style_properties.set("backgroundDisabled"_s, Property { .type = PropType::Drawable });
     s_style_properties.set("backgroundHover"_s, Property { .type = PropType::Drawable });
     s_style_properties.set("backgroundPressed"_s, Property { .type = PropType::Drawable });
+    s_style_properties.set("bar"_s, Property { .type = PropType::Drawable });
+    s_style_properties.set("barAlignment"_s, Property { .type = PropType::Alignment });
     s_style_properties.set("buttonStyle"_s, Property { .type = PropType::Style });
     s_style_properties.set("caretFlashCycleDuration"_s, Property { .type = PropType::Float });
     s_style_properties.set("check"_s, Property { .type = PropType::Drawable });
@@ -337,6 +341,7 @@ void initStyleConstants()
     s_style_properties.set("endIcon"_s, Property { .type = PropType::Drawable });
     s_style_properties.set("endIconAlignment"_s, Property { .type = PropType::Alignment });
     s_style_properties.set("font"_s, Property { .type = PropType::Font });
+    s_style_properties.set("height"_s, Property { .type = PropType::Int });
     s_style_properties.set("labelStyle"_s, Property { .type = PropType::Style });
     s_style_properties.set("offsetFromMouse"_s, Property { .type = PropType::IntPosition });
     s_style_properties.set("outputTextColor"_s, Property { .type = PropType::Color });
@@ -480,6 +485,13 @@ void initStyleConstants()
             "thumbHover"_s,
             "thumbPressed"_s,
             "thumbSize"_s,
+        });
+    assignStyleProperties("StatBar"_s, StyleType::StatBar,
+        {
+            "bar"_s,
+            "barAlignment"_s,
+            "height"_s,
+            "track"_s,
         });
     assignStyleProperties("TextInput"_s, StyleType::TextInput,
         {
@@ -943,6 +955,18 @@ ErrorOr<OwnedRef<Asset>> load_theme(AssetMetadata& metadata, Blob data)
                     child_metadata->loaded_asset = adopt_own(*new SliderStyle(
                         move(track), move(track_thickness),
                         move(thumb), move(thumb_hover), move(thumb_pressed), move(thumb_disabled), move(thumb_size)));
+                    child_metadata->state = AssetMetadata::State::Loaded;
+                    children.append(child_metadata->get_ref());
+                } break;
+
+                case StyleType::StatBar: {
+                    auto track = style->get_drawable_style("track"_h, {});
+                    auto bar = style->get_drawable_style("bar"_h, {});
+                    auto bar_alignment = style->get_alignment("barAlignment"_h, { HAlign::Left, VAlign::Fill });
+                    auto height = style->get_s32("height"_h, 16);
+
+                    AssetMetadata* child_metadata = asset_manager().add_asset(StatBarStyle::asset_type(), style->name, {});
+                    child_metadata->loaded_asset = adopt_own(*new StatBarStyle(move(track), move(bar), bar_alignment, height));
                     child_metadata->state = AssetMetadata::State::Loaded;
                     children.append(child_metadata->get_ref());
                 } break;

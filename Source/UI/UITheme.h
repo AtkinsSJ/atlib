@@ -70,6 +70,7 @@ enum class StyleType : u8 {
     RadioButton,
     Scrollbar,
     Slider,
+    StatBar,
     TextInput,
     Window,
     COUNT
