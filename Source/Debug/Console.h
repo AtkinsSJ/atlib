@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <Debug/Forward.h>
 #include <Input/KeyboardShortcut.h>
 #include <UI/TextInput.h>
 #include <UI/UI.h>
@@ -22,8 +23,6 @@ struct CommandShortcut {
     KeyboardShortcut shortcut;
     StringView command;
 };
-
-struct Console;
 
 using CommandFunction = void (*)(Console&, Lexer& arguments);
 struct Command {
