@@ -13,8 +13,10 @@ static InputState s_input_state {};
 
 s32 keycodeToIndex(SDL_Keycode key)
 {
+    // FIXME: This needs a rethink. I've had repeated issues with key collisions, which I think
+    //        I've fixed, but I'm not certain.
     if (key & SDLK_SCANCODE_MASK)
-        return (key & ~SDLK_SCANCODE_MASK) | 128;
+        return (key & ~SDLK_SCANCODE_MASK) + 128;
     return key;
 }
 
