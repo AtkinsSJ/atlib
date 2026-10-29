@@ -10,8 +10,12 @@
 
 String Allocator::allocate_string(StringView input)
 {
-    auto character_data = allocate_multiple<char>(input.length());
+    // We enforce null termination in the allocated string, because that makes things simpler.
+    auto is_null_terminated = input.is_null_terminated();
+    auto character_data = allocate_multiple<char>(input.length() + (is_null_terminated ? 0 : 1));
     copy_memory(input.raw_pointer_to_characters(), character_data.raw_data(), input.length());
+    if (!is_null_terminated)
+        character_data.raw_data()[input.length()] = 0;
     return String { character_data.raw_data(), input.length() };
 }
 
