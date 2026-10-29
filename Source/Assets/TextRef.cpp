@@ -12,6 +12,13 @@ namespace Assets {
 
 String const& TextRef::text() const
 {
+    // Avoid crashing when a default-initialized TextRef is read.
+    static String s_blank = ""_s;
+    if (m_name.is_empty()) {
+        logWarn("Attempting to read from a default-initialized TextRef!"_s);
+        return s_blank;
+    }
+
     auto& assets = asset_manager();
     if (!m_text.has_value() || assets.asset_generation() > m_asset_generation) {
         m_text = assets.get_text(m_name);

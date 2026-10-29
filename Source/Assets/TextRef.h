@@ -12,6 +12,7 @@ namespace Assets {
 
 class TextRef {
 public:
+    TextRef() = default;
     explicit TextRef(String short_name)
         : m_name(move(short_name))
     {
