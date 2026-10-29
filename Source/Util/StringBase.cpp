@@ -22,6 +22,11 @@ bool StringBase::operator==(StringBase const& other) const
     return bytes() == other.bytes();
 }
 
+bool StringBase::is_null_terminated() const
+{
+    return !is_empty() && m_chars[m_length - 1] == 0;
+}
+
 Optional<size_t> StringBase::find(char needle, SearchFrom search_direction, Optional<size_t> start_index) const
 {
     if (is_empty())

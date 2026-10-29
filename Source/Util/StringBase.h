@@ -34,6 +34,7 @@ public:
 
     size_t length() const { return m_length; }
     bool is_empty() const { return m_length == 0; }
+    bool is_null_terminated() const;
 
     Optional<size_t> find(char needle, SearchFrom = SearchFrom::Start, Optional<size_t> start_index = {}) const;
     bool contains(char) const;
