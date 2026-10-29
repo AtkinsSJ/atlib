@@ -67,9 +67,9 @@ struct AssetManager final
     HashMap<String, String> texts;
     HashMap<String, String> defaultTexts; // "en" locale
 
-    ChunkedArray<AssetManagerListener*> listeners;
-    void register_listener(AssetManagerListener*);
-    void unregister_listener(AssetManagerListener*);
+    ChunkedArray<Ref<AssetManagerListener>> listeners;
+    void register_listener(AssetManagerListener&);
+    void unregister_listener(AssetManagerListener&);
 
     String make_asset_path(AssetType, StringView short_name) const;
 

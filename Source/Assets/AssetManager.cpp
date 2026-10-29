@@ -31,7 +31,7 @@ void initAssets(String assets_directory)
 
     UI::initStyleConstants();
 
-    s_assets->listeners = ChunkedArray<AssetManagerListener*>(s_assets->arena, 32);
+    s_assets->listeners = ChunkedArray<Ref<AssetManagerListener>>(s_assets->arena, 32);
     s_assets->asset_loaders = ChunkedArray<OwnedRef<AssetLoader>>(s_assets->arena, 32);
 
     // NB: This might fail, or we might be on a platform where it isn't implemented.
@@ -442,12 +442,12 @@ void AssetManager::on_settings_changed(Settings const& settings)
     }
 }
 
-void AssetManager::register_listener(AssetManagerListener* listener)
+void AssetManager::register_listener(AssetManagerListener& listener)
 {
     listeners.append(listener);
 }
 
-void AssetManager::unregister_listener(AssetManagerListener* listener)
+void AssetManager::unregister_listener(AssetManagerListener& listener)
 {
     listeners.findAndRemove(listener);
 }
