@@ -112,6 +112,11 @@ public:
         }
     }
 
+    ReadonlySpan<T> span() const
+    {
+        return { m_width * m_height, items };
+    }
+
 private:
     u32 m_width { 0 };
     u32 m_height { 0 };
