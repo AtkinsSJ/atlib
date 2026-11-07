@@ -63,6 +63,17 @@ public:
         m_array.clear();
     }
 
+    // FIXME: We should have a proper iterator really, but ChunkedArrays are awkward.
+    //        As a stopgap, here's a foreach method.
+    template<typename Callback>
+    void for_each(Callback const& callback)
+    {
+        for (auto it = m_array.iterateBackwards(); it.hasNext(); it.next()) {
+            auto& entry = it.get();
+            callback(entry);
+        }
+    }
+
 private:
     ChunkedArray<T> m_array;
 };
