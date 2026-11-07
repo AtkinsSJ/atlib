@@ -29,6 +29,7 @@ public:
     {
     }
 
+    size_t count() const { return m_array.count; }
     bool is_empty() const { return m_array.is_empty(); }
 
     T* push(T item)
@@ -55,6 +56,11 @@ public:
             return {};
 
         return m_array.take_index(m_array.count - 1);
+    }
+
+    void clear()
+    {
+        m_array.clear();
     }
 
 private:
