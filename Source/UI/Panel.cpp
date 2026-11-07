@@ -181,7 +181,7 @@ void Panel::addSprite(Sprite* sprite, s32 width, s32 height)
 
     if (sprite != nullptr) {
         if (!hideWidgets) {
-            drawSingleSprite(renderBuffer, sprite, widgetBounds, the_renderer().shaderIds.pixelArt, Colour::white());
+            renderBuffer->draw_single_sprite(*sprite, widgetBounds, the_renderer().shaderIds.pixelArt, Colour::white());
         }
     }
 

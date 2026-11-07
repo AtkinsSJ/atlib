@@ -15,7 +15,7 @@ void Drawable::preparePlaceholder(RenderBuffer* buffer)
 {
     auto& renderer = the_renderer();
     style->value.visit(
-        [](Empty) {},
+        [](Empty) { },
         [&](Colour const&) {
             placeholder = appendDrawRectPlaceholder(buffer, renderer.shaderIds.untextured, false);
         },
@@ -33,18 +33,18 @@ void Drawable::preparePlaceholder(RenderBuffer* buffer)
 void Drawable::fillPlaceholder(Rect2I bounds)
 {
     style->value.visit(
-        [](Empty) {},
+        [](Empty) { },
         [&](Colour const& colour) {
-            fillDrawRectPlaceholder(&placeholder.get<DrawRectPlaceholder>(), bounds, colour);
+            placeholder.get<DrawRectPlaceholder>().fill(bounds, colour);
         },
         [&](DrawableStyle::Gradient const& gradient) {
-            fillDrawRectPlaceholder(&placeholder.get<DrawRectPlaceholder>(), bounds, gradient.color00, gradient.color01, gradient.color10, gradient.color11);
+            placeholder.get<DrawRectPlaceholder>().fill(bounds, gradient.color00, gradient.color01, gradient.color10, gradient.color11);
         },
         [&](DrawableStyle::Ninepatch const& ninepatch) {
-            fillDrawNinepatchPlaceholder(&placeholder.get<DrawNinepatchPlaceholder>(), bounds, dynamic_cast<Ninepatch*>(ninepatch.ref.metadata().loaded_asset.ptr()), ninepatch.colour);
+            placeholder.get<DrawNinepatchPlaceholder>().fill(bounds, ninepatch.ref.get(), ninepatch.colour);
         },
         [&](DrawableStyle::Sprite const& sprite) {
-            fillDrawRectPlaceholder(&placeholder.get<DrawRectPlaceholder>(), bounds, &sprite.ref.get(), sprite.colour);
+            placeholder.get<DrawRectPlaceholder>().fill(bounds, sprite.ref.get(), sprite.colour);
         });
 }
 
@@ -52,18 +52,18 @@ void Drawable::draw(RenderBuffer* buffer, Rect2I bounds)
 {
     auto& renderer = the_renderer();
     style->value.visit(
-        [](Empty) {},
+        [](Empty) { },
         [&](Colour const& colour) {
-            drawSingleRect(buffer, bounds, renderer.shaderIds.untextured, colour);
+            buffer->draw_single_rect(bounds, renderer.shaderIds.untextured, colour);
         },
         [&](DrawableStyle::Gradient const& gradient) {
-            drawSingleRect(buffer, bounds, renderer.shaderIds.untextured, gradient.color00, gradient.color01, gradient.color10, gradient.color11);
+            buffer->draw_single_rect(bounds, renderer.shaderIds.untextured, gradient.color00, gradient.color01, gradient.color10, gradient.color11);
         },
         [&](DrawableStyle::Ninepatch const& ninepatch) {
-            drawNinepatch(buffer, bounds, renderer.shaderIds.textured, &dynamic_cast<Ninepatch&>(*ninepatch.ref.metadata().loaded_asset), ninepatch.colour);
+            buffer->draw_ninepatch(bounds, renderer.shaderIds.textured, dynamic_cast<Ninepatch&>(*ninepatch.ref.metadata().loaded_asset), ninepatch.colour);
         },
         [&](DrawableStyle::Sprite const& sprite) {
-            drawSingleSprite(buffer, &sprite.ref.get(), bounds, renderer.shaderIds.textured, sprite.colour);
+            buffer->draw_single_sprite(sprite.ref.get(), bounds, renderer.shaderIds.textured, sprite.colour);
         });
 }
 
