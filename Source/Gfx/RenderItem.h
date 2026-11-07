@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <Assets/Forward.h>
 #include <Gfx/Colour.h>
 #include <Gfx/Forward.h>
 #include <Util/Basic.h>
@@ -72,11 +73,6 @@ struct RenderItem_DrawSingleRect {
     Rect2 uv; // in (0 to 1) space
 };
 
-struct DrawRectPlaceholder {
-    RenderItem_SetTexture* setTexture;
-    RenderItem_DrawSingleRect* drawRect;
-};
-
 u8 const maxRenderItemsPerGroup = u8Max;
 struct RenderItem_DrawRects {
     u8 count;
@@ -85,28 +81,6 @@ struct RenderItem_DrawRects_Item {
     Rect2 bounds;
     Colour color;
     Rect2 uv;
-};
-
-struct DrawRectsSubGroup {
-    RenderItem_DrawRects* header;
-    RenderItem_DrawRects_Item* first;
-    s32 maxCount;
-
-    DrawRectsSubGroup* prev;
-    DrawRectsSubGroup* next;
-};
-
-// Think of this like a "handle". It has data inside but you shouldn't touch it from user code!
-struct DrawRectsGroup {
-    RenderBuffer* buffer;
-
-    DrawRectsSubGroup firstSubGroup;
-    DrawRectsSubGroup* currentSubGroup;
-
-    s32 count;
-    s32 maxCount;
-
-    AssetMetadata* texture;
 };
 
 struct RenderItem_DrawRings {

@@ -5,10 +5,12 @@
  */
 
 #include "Renderer.h"
+
 #include <Assets/AssetManager.h>
 #include <Debug/Debug.h>
 #include <Gfx/BitmapFont.h>
 #include <Gfx/Cursor.h>
+#include <Gfx/DrawRectsGroup.h>
 #include <Gfx/Ninepatch.h>
 #include <Gfx/OpenGL.h>
 #include <Settings/Settings.h>
@@ -294,310 +296,92 @@ u8* appendRenderItemInternal(RenderBuffer* buffer, RenderItemType type, smm size
 
 void addSetProjectionMatrix(RenderBuffer* buffer, Matrix4 const& matrix)
 {
-    RenderItem_SetProjectionMatrix* matrix_item = appendRenderItem<RenderItem_SetProjectionMatrix>(buffer, RenderItemType::SetProjectionMatrix);
-    matrix_item->matrix = matrix;
+    buffer->add_set_projection_matrix(matrix);
 }
 
 void addSetShader(RenderBuffer* buffer, s8 shaderID)
 {
-    if (buffer->currentShader != shaderID) {
-        RenderItem_SetShader* shaderItem = appendRenderItem<RenderItem_SetShader>(buffer, RenderItemType::SetShader);
-        shaderItem->shaderID = shaderID;
-
-        buffer->currentShader = shaderID;
-        // NB: Setting the opengl shader loses the texture, so we replicate that here.
-        // I suppose in the future we could make sure to bind the texture when the shader changes, but
-        // most of the time we want to set a new texture anyway, so that would be a waste of cpu time.
-        buffer->currentTexture = nullptr;
-    }
+    buffer->add_set_shader(shaderID);
 }
 
 void addSetTexture(RenderBuffer* buffer, AssetMetadata* texture)
 {
-    ASSERT(texture->state == AssetMetadata::State::Loaded);
-
-    if (buffer->currentTexture != texture) {
-        RenderItem_SetTexture* textureItem = appendRenderItem<RenderItem_SetTexture>(buffer, RenderItemType::SetTexture);
-        textureItem->texture = texture;
-
-        buffer->currentTexture = texture;
-    }
+    buffer->add_set_texture(*texture);
 }
 
 void addSetTextureRaw(RenderBuffer* buffer, s32 width, s32 height, u8 bytesPerPixel, u8* pixels)
 {
-    buffer->currentTexture = nullptr;
-
-    smm pixelDataSize = (width * height * bytesPerPixel);
-    auto itemAndData = appendRenderItem<RenderItem_SetTexture>(buffer, RenderItemType::SetTexture, pixelDataSize);
-
-    RenderItem_SetTexture* textureItem = itemAndData.item;
-    textureItem->texture = nullptr;
-    textureItem->width = width;
-    textureItem->height = height;
-    textureItem->bytesPerPixel = bytesPerPixel;
-
-    copyMemory(pixels, itemAndData.data, pixelDataSize);
+    buffer->add_set_texture_raw(width, height, bytesPerPixel, { static_cast<size_t>(width * height * bytesPerPixel), pixels });
 }
 
 void addSetPalette(RenderBuffer* buffer, ReadonlySpan<Colour> palette)
 {
-    auto itemAndData = appendRenderItem<RenderItem_SetPalette>(buffer, RenderItemType::SetPalette, sizeof(Colour) * palette.size());
-
-    itemAndData.item->paletteSize = palette.size();
-
-    copyMemory(palette.raw_data(), (Colour*)itemAndData.data, palette.size());
+    buffer->add_set_palette(palette);
 }
 
 void addClear(RenderBuffer* buffer, Colour clearColor)
 {
-    RenderItem_Clear* clear = appendRenderItem<RenderItem_Clear>(buffer, RenderItemType::Clear);
-    clear->clearColor = clearColor;
+    buffer->add_clear(clearColor);
 }
 
 void addBeginScissor(RenderBuffer* buffer, Rect2I bounds)
 {
-    ASSERT(bounds.width() >= 0);
-    ASSERT(bounds.height() >= 0);
-
-    RenderItem_BeginScissor* scissor = appendRenderItem<RenderItem_BeginScissor>(buffer, RenderItemType::BeginScissor);
-
-    // We have to flip the bounds rectangle vertically because OpenGL has the origin in the bottom-left,
-    // whereas our system uses the top-left!
-
-    bounds.set_y(s_renderer->window_height() - bounds.y() - bounds.height());
-
-    // Crop to window bounds
-    scissor->bounds = bounds.intersected({ 0u, 0u, s_renderer->window_width(), s_renderer->window_height() });
-
-    ASSERT(scissor->bounds.width() >= 0);
-    ASSERT(scissor->bounds.height() >= 0);
-
-    buffer->scissorCount++;
+    buffer->add_begin_scissor(bounds);
 }
 
 void addEndScissor(RenderBuffer* buffer)
 {
-    ASSERT(buffer->scissorCount > 0);
-    [[maybe_unused]] RenderItem_EndScissor* scissor = appendRenderItem<RenderItem_EndScissor>(buffer, RenderItemType::EndScissor);
-    buffer->scissorCount--;
+    buffer->add_end_scissor();
 }
 
 void drawSingleSprite(RenderBuffer* buffer, Sprite* sprite, Rect2 bounds, s8 shaderID, Colour color)
 {
-    addSetShader(buffer, shaderID);
-    addSetTexture(buffer, sprite->texture);
-
-    RenderItem_DrawSingleRect* rect = appendRenderItem<RenderItem_DrawSingleRect>(buffer, RenderItemType::DrawSingleRect);
-
-    rect->bounds = bounds;
-    rect->color00 = color;
-    rect->color01 = color;
-    rect->color10 = color;
-    rect->color11 = color;
-    rect->uv = sprite->uv;
+    buffer->draw_single_sprite(*sprite, bounds, shaderID, color);
 }
 
 void drawSingleRect(RenderBuffer* buffer, Rect2 bounds, s8 shaderID, Colour color)
 {
-    drawSingleRect(buffer, bounds, shaderID, color, color, color, color);
+    buffer->draw_single_rect(bounds, shaderID, color);
 }
 
 void drawSingleRect(RenderBuffer* buffer, Rect2 bounds, s8 shaderID, Colour color00, Colour color01, Colour color10, Colour color11)
 {
-    addSetShader(buffer, shaderID);
-
-    RenderItem_DrawSingleRect* rect = appendRenderItem<RenderItem_DrawSingleRect>(buffer, RenderItemType::DrawSingleRect);
-
-    rect->bounds = bounds;
-    rect->color00 = color00;
-    rect->color01 = color01;
-    rect->color10 = color10;
-    rect->color11 = color11;
-    rect->uv = { 0.0f, 0.0f, 1.0f, 1.0f };
+    buffer->draw_single_rect(bounds, shaderID, color00, color01, color10, color11);
 }
 
 DrawRectPlaceholder appendDrawRectPlaceholder(RenderBuffer* buffer, s8 shaderID, bool hasTexture)
 {
-    addSetShader(buffer, shaderID);
-
-    DrawRectPlaceholder result = {};
-
-    if (hasTexture) {
-        RenderItem_SetTexture* textureItem = appendRenderItem<RenderItem_SetTexture>(buffer, RenderItemType::SetTexture);
-
-        // We need to clear this, because we don't know what this texture will be, so any following draw calls
-        // have to assume that they need to set their texture
-        buffer->currentTexture = nullptr;
-
-        result.setTexture = textureItem;
-    }
-
-    result.drawRect = appendRenderItem<RenderItem_DrawSingleRect>(buffer, RenderItemType::DrawSingleRect);
-
-    return result;
+    return buffer->append_draw_rect_placeholder(shaderID, hasTexture);
 }
 
 void fillDrawRectPlaceholder(DrawRectPlaceholder* placeholder, Rect2 bounds, Colour color)
 {
-    fillDrawRectPlaceholder(placeholder, bounds, color, color, color, color);
+    placeholder->fill(bounds, color);
 }
 
 void fillDrawRectPlaceholder(DrawRectPlaceholder* placeholder, Rect2 bounds, Colour color00, Colour color01, Colour color10, Colour color11)
 {
-    RenderItem_DrawSingleRect* rect = placeholder->drawRect;
-
-    rect->bounds = bounds;
-    rect->color00 = color00;
-    rect->color01 = color01;
-    rect->color10 = color10;
-    rect->color11 = color11;
-    rect->uv = { 0.0f, 0.0f, 1.0f, 1.0f };
+    placeholder->fill(bounds, color00, color01, color10, color11);
 }
 
 void fillDrawRectPlaceholder(DrawRectPlaceholder* placeholder, Rect2 bounds, Sprite* sprite, Colour color)
 {
-    ASSERT(placeholder->setTexture != nullptr);
-
-    placeholder->setTexture->texture = sprite->texture;
-
-    RenderItem_DrawSingleRect* rect = placeholder->drawRect;
-    rect->bounds = bounds;
-    rect->color00 = color;
-    rect->color01 = color;
-    rect->color10 = color;
-    rect->color11 = color;
-    rect->uv = sprite->uv;
+    placeholder->fill(bounds, *sprite, color);
 }
 
 void drawNinepatch(RenderBuffer* buffer, Rect2I bounds, s8 shaderID, Ninepatch* ninepatch, Colour color)
 {
-    DrawRectsGroup* group = beginRectsGroupInternal(buffer, ninepatch->texture, shaderID, 9);
-
-    // NB: See comments in the Ninepatch struct for how we could avoid doing the  UV calculations repeatedly,
-    // and why we haven't done so.
-
-    float x0 = (float)(bounds.x());
-    float x1 = (float)(bounds.x() + ninepatch->pu1 - ninepatch->pu0);
-    float x2 = (float)(bounds.x() + bounds.width() - (ninepatch->pu3 - ninepatch->pu2));
-    float x3 = (float)(bounds.x() + bounds.width());
-
-    float y0 = (float)(bounds.y());
-    float y1 = (float)(bounds.y() + ninepatch->pv1 - ninepatch->pv0);
-    float y2 = (float)(bounds.y() + bounds.height() - (ninepatch->pv3 - ninepatch->pv2));
-    float y3 = (float)(bounds.y() + bounds.height());
-
-    // top left
-    addRectInternal(group, Rect2::create_min_max(x0, y0, x1, y1), color, Rect2::create_min_max(ninepatch->u0, ninepatch->v0, ninepatch->u1, ninepatch->v1));
-
-    // top
-    addRectInternal(group, Rect2::create_min_max(x1, y0, x2, y1), color, Rect2::create_min_max(ninepatch->u1, ninepatch->v0, ninepatch->u2, ninepatch->v1));
-
-    // top-right
-    addRectInternal(group, Rect2::create_min_max(x2, y0, x3, y1), color, Rect2::create_min_max(ninepatch->u2, ninepatch->v0, ninepatch->u3, ninepatch->v1));
-
-    // middle left
-    addRectInternal(group, Rect2::create_min_max(x0, y1, x1, y2), color, Rect2::create_min_max(ninepatch->u0, ninepatch->v1, ninepatch->u1, ninepatch->v2));
-
-    // middle
-    addRectInternal(group, Rect2::create_min_max(x1, y1, x2, y2), color, Rect2::create_min_max(ninepatch->u1, ninepatch->v1, ninepatch->u2, ninepatch->v2));
-
-    // middle-right
-    addRectInternal(group, Rect2::create_min_max(x2, y1, x3, y2), color, Rect2::create_min_max(ninepatch->u2, ninepatch->v1, ninepatch->u3, ninepatch->v2));
-
-    // bottom left
-    addRectInternal(group, Rect2::create_min_max(x0, y2, x1, y3), color, Rect2::create_min_max(ninepatch->u0, ninepatch->v2, ninepatch->u1, ninepatch->v3));
-
-    // bottom
-    addRectInternal(group, Rect2::create_min_max(x1, y2, x2, y3), color, Rect2::create_min_max(ninepatch->u1, ninepatch->v2, ninepatch->u2, ninepatch->v3));
-
-    // bottom-right
-    addRectInternal(group, Rect2::create_min_max(x2, y2, x3, y3), color, Rect2::create_min_max(ninepatch->u2, ninepatch->v2, ninepatch->u3, ninepatch->v3));
-
-    endRectsGroup(group);
+    buffer->draw_ninepatch(bounds, shaderID, *ninepatch, color);
 }
 
 DrawNinepatchPlaceholder appendDrawNinepatchPlaceholder(RenderBuffer* buffer, AssetMetadata* texture, s8 shaderID)
 {
-    DrawNinepatchPlaceholder placeholder = {};
-
-    DrawRectsGroup* rectsGroup = beginRectsGroupTextured(buffer, texture, shaderID, 9);
-    placeholder.firstRect = reserve(rectsGroup, 9);
-    endRectsGroup(rectsGroup);
-
-    return placeholder;
+    return buffer->append_draw_ninepatch_placeholder(*texture, shaderID);
 }
 
 void fillDrawNinepatchPlaceholder(DrawNinepatchPlaceholder* placeholder, Rect2I bounds, Ninepatch* ninepatch, Colour color)
 {
-    // @Copypasta drawNinepatch()
-    // NB: See comments in the Ninepatch struct for how we could avoid doing the  UV calculations repeatedly,
-    // and why we haven't done so.
-
-    float x0 = (float)(bounds.x());
-    float x1 = (float)(bounds.x() + ninepatch->pu1 - ninepatch->pu0);
-    float x2 = (float)(bounds.x() + bounds.width() - (ninepatch->pu3 - ninepatch->pu2));
-    float x3 = (float)(bounds.x() + bounds.width());
-
-    float y0 = (float)(bounds.y());
-    float y1 = (float)(bounds.y() + ninepatch->pv1 - ninepatch->pv0);
-    float y2 = (float)(bounds.y() + bounds.height() - (ninepatch->pv3 - ninepatch->pv2));
-    float y3 = (float)(bounds.y() + bounds.height());
-
-    RenderItem_DrawRects_Item* rect = placeholder->firstRect;
-
-    // top left
-    rect->bounds = Rect2::create_min_max(x0, y0, x1, y1);
-    rect->color = color;
-    rect->uv = Rect2::create_min_max(ninepatch->u0, ninepatch->v0, ninepatch->u1, ninepatch->v1);
-    rect++;
-
-    // top
-    rect->bounds = Rect2::create_min_max(x1, y0, x2, y1);
-    rect->color = color;
-    rect->uv = Rect2::create_min_max(ninepatch->u1, ninepatch->v0, ninepatch->u2, ninepatch->v1);
-    rect++;
-
-    // top-right
-    rect->bounds = Rect2::create_min_max(x2, y0, x3, y1);
-    rect->color = color;
-    rect->uv = Rect2::create_min_max(ninepatch->u2, ninepatch->v0, ninepatch->u3, ninepatch->v1);
-    rect++;
-
-    // middle left
-    rect->bounds = Rect2::create_min_max(x0, y1, x1, y2);
-    rect->color = color;
-    rect->uv = Rect2::create_min_max(ninepatch->u0, ninepatch->v1, ninepatch->u1, ninepatch->v2);
-    rect++;
-
-    // middle
-    rect->bounds = Rect2::create_min_max(x1, y1, x2, y2);
-    rect->color = color;
-    rect->uv = Rect2::create_min_max(ninepatch->u1, ninepatch->v1, ninepatch->u2, ninepatch->v2);
-    rect++;
-
-    // middle-right
-    rect->bounds = Rect2::create_min_max(x2, y1, x3, y2);
-    rect->color = color;
-    rect->uv = Rect2::create_min_max(ninepatch->u2, ninepatch->v1, ninepatch->u3, ninepatch->v2);
-    rect++;
-
-    // bottom left
-    rect->bounds = Rect2::create_min_max(x0, y2, x1, y3);
-    rect->color = color;
-    rect->uv = Rect2::create_min_max(ninepatch->u0, ninepatch->v2, ninepatch->u1, ninepatch->v3);
-    rect++;
-
-    // bottom
-    rect->bounds = Rect2::create_min_max(x1, y2, x2, y3);
-    rect->color = color;
-    rect->uv = Rect2::create_min_max(ninepatch->u1, ninepatch->v2, ninepatch->u2, ninepatch->v3);
-    rect++;
-
-    // bottom-right
-    rect->bounds = Rect2::create_min_max(x2, y2, x3, y3);
-    rect->color = color;
-    rect->uv = Rect2::create_min_max(ninepatch->u2, ninepatch->v2, ninepatch->u3, ninepatch->v3);
+    placeholder->fill(bounds, *ninepatch, color);
 }
 
 DrawRectsGroup* beginRectsGroupInternal(RenderBuffer* buffer, AssetMetadata* texture, s8 shaderID, s32 maxCount)
@@ -620,235 +404,85 @@ DrawRectsGroup* beginRectsGroupInternal(RenderBuffer* buffer, AssetMetadata* tex
 
 DrawRectsGroup* beginRectsGroupTextured(RenderBuffer* buffer, AssetMetadata* texture, s8 shaderID, s32 maxCount)
 {
-    return beginRectsGroupInternal(buffer, texture, shaderID, maxCount);
+    return &buffer->begin_rects_group_textured(*texture, maxCount, shaderID);
 }
 
 DrawRectsGroup* beginRectsGroupUntextured(RenderBuffer* buffer, s8 shaderID, s32 maxCount)
 {
-    return beginRectsGroupInternal(buffer, nullptr, shaderID, maxCount);
+    return &buffer->begin_rects_group_untextured(maxCount, shaderID);
 }
 
 DrawRectsGroup* beginRectsGroupForText(RenderBuffer* buffer, BitmapFont* font, s8 shaderID, s32 maxCount)
 {
-    return beginRectsGroupInternal(buffer, font->texture(), shaderID, maxCount);
+    return &buffer->begin_rects_group_for_text(*font, maxCount, shaderID);
 }
 
 DrawRectsSubGroup beginRectsSubGroup(DrawRectsGroup* group)
 {
-    DrawRectsSubGroup result = {};
-
-    s32 subGroupItemCount = min(group->maxCount - group->count, (s32)maxRenderItemsPerGroup);
-    ASSERT(subGroupItemCount > 0 && subGroupItemCount <= maxRenderItemsPerGroup);
-
-    smm reservedSize = sizeof(RenderItem_DrawRects_Item) * subGroupItemCount;
-    u8* data = appendRenderItemInternal(group->buffer, RenderItemType::DrawRects, sizeof(RenderItem_DrawRects), reservedSize);
-    group->buffer->hasRangeReserved = true;
-
-    result.header = (RenderItem_DrawRects*)data;
-    result.first = (RenderItem_DrawRects_Item*)(data + sizeof(RenderItem_DrawRects));
-    result.maxCount = subGroupItemCount;
-
-    *result.header = {};
-    result.header->count = 0;
-
-    return result;
+    return group->begin_sub_group();
 }
 
 void endCurrentSubGroup(DrawRectsGroup* group)
 {
-    ASSERT(group->buffer->hasRangeReserved); // Attempted to finish a range while a range is not reserved!
-    group->buffer->hasRangeReserved = false;
-
-    group->buffer->currentChunk->used += group->currentSubGroup->header->count * sizeof(RenderItem_DrawRects_Item);
+    group->end_current_sub_group();
 }
 
 RenderItem_DrawRects_Item* reserve(DrawRectsGroup* group, s32 count)
 {
-    ASSERT((group->currentSubGroup->header->count + count) <= group->currentSubGroup->maxCount);
-
-    RenderItem_DrawRects_Item* result = group->currentSubGroup->first + group->currentSubGroup->header->count;
-
-    group->currentSubGroup->header->count = (u8)(group->currentSubGroup->header->count + count);
-    group->count += count;
-
-    return result;
-}
-
-void addRectInternal(DrawRectsGroup* group, Rect2 bounds, Colour color, Rect2 uv)
-{
-    ASSERT(group->count < group->maxCount);
-
-    if (group->currentSubGroup->header->count == group->currentSubGroup->maxCount) {
-        endCurrentSubGroup(group);
-        DrawRectsSubGroup* prevSubGroup = group->currentSubGroup;
-        group->currentSubGroup = temp_arena().allocate<DrawRectsSubGroup>();
-        *group->currentSubGroup = beginRectsSubGroup(group);
-        prevSubGroup->next = group->currentSubGroup;
-        group->currentSubGroup->prev = prevSubGroup;
-    }
-    ASSERT(group->currentSubGroup->header->count < group->currentSubGroup->maxCount);
-
-    RenderItem_DrawRects_Item* item = group->currentSubGroup->first + group->currentSubGroup->header->count++;
-    item->bounds = bounds;
-    item->color = color;
-    item->uv = uv;
-
-    group->count++;
+    return group->reserve(count).raw_data();
 }
 
 void addUntexturedRect(DrawRectsGroup* group, Rect2 bounds, Colour color)
 {
-    addRectInternal(group, bounds, color, { 0, 0, 0, 0 });
+    group->add_untextured_rect(bounds, color);
 }
 
 void addGlyphRect(DrawRectsGroup* group, BitmapFontGlyph const* glyph, V2 position, Colour color)
 {
-    Rect2 bounds { position.x + glyph->xOffset, position.y + glyph->yOffset, static_cast<float>(glyph->width), static_cast<float>(glyph->height) };
-    addRectInternal(group, bounds, color, glyph->uv);
+    group->add_glyph_rect(*glyph, position, color);
 }
 
 void addSpriteRect(DrawRectsGroup* group, Sprite* sprite, Rect2 bounds, Colour color)
 {
-    ASSERT(group->texture == sprite->texture);
-
-    addRectInternal(group, bounds, color, sprite->uv);
+    group->add_sprite_rect(*sprite, bounds, color);
 }
 
 void offsetRange(DrawRectsGroup* group, s32 startIndex, s32 endIndexInclusive, float offsetX, float offsetY)
 {
-    DEBUG_FUNCTION_T(DebugCodeDataTag::Renderer);
-
-    ASSERT(startIndex >= 0 && startIndex < group->count);
-    ASSERT(endIndexInclusive >= 0 && endIndexInclusive < group->count);
-    ASSERT(startIndex <= endIndexInclusive);
-
-    V2 offset { offsetX, offsetY };
-
-    s32 debugItemsUpdated = 0;
-
-    DrawRectsSubGroup* subGroup = &group->firstSubGroup;
-    s32 firstIndexInSubGroup = 0;
-    // Find the first subgroup that's involved
-    while (firstIndexInSubGroup + subGroup->header->count < startIndex) {
-        firstIndexInSubGroup += subGroup->header->count;
-        subGroup = subGroup->next;
-    }
-
-    // Update the items in the range
-    while (firstIndexInSubGroup <= endIndexInclusive) {
-        s32 index = startIndex - firstIndexInSubGroup;
-        if (index < 0)
-            index = 0;
-        for (;
-            (index <= endIndexInclusive - firstIndexInSubGroup) && (index < subGroup->header->count);
-            index++) {
-            RenderItem_DrawRects_Item* item = subGroup->first + index;
-            item->bounds.translate(offset);
-            debugItemsUpdated++;
-        }
-
-        firstIndexInSubGroup += subGroup->header->count;
-        subGroup = subGroup->next;
-    }
-
-    ASSERT(debugItemsUpdated == (endIndexInclusive - startIndex) + 1);
+    group->offset_range(startIndex, endIndexInclusive, offsetX, offsetY);
 }
 
 void endRectsGroup(DrawRectsGroup* group)
 {
-    endCurrentSubGroup(group);
+    group->end();
 }
 
 void drawGrid(RenderBuffer* buffer, Rect2 bounds, Array2<u8> const& grid, ReadonlySpan<Colour> palette)
 {
-    DEBUG_FUNCTION_T(DebugCodeDataTag::Renderer);
-
-    addSetShader(buffer, s_renderer->shaderIds.paletted);
-
-    addSetTextureRaw(buffer, grid.width(), grid.height(), 1, grid.items);
-    addSetPalette(buffer, palette);
-
-    RenderItem_DrawSingleRect* rect = appendRenderItem<RenderItem_DrawSingleRect>(buffer, RenderItemType::DrawSingleRect);
-    rect->bounds = bounds;
-    rect->color00 = Colour::white();
-    rect->color01 = Colour::white();
-    rect->color10 = Colour::white();
-    rect->color11 = Colour::white();
-    rect->uv = { 0, 0, 1, 1 };
+    buffer->draw_grid(bounds, grid, palette);
 }
 
 DrawRingsGroup* beginRingsGroup(RenderBuffer* buffer, s32 maxCount)
 {
-    // @Copypasta beginRectsGroupInternal() - maybe factor out common "grouped render items" code?
-    addSetShader(buffer, s_renderer->shaderIds.untextured);
-
-    DrawRingsGroup* result = temp_arena().allocate<DrawRingsGroup>();
-    result->buffer = buffer;
-    result->count = 0;
-    result->maxCount = maxCount;
-
-    result->firstSubGroup = beginRingsSubGroup(result);
-    result->currentSubGroup = &result->firstSubGroup;
-
-    return result;
+    return &buffer->begin_rings_group(maxCount);
 }
 
 DrawRingsSubGroup beginRingsSubGroup(DrawRingsGroup* group)
 {
-    // @Copypasta beginRectsSubGroup() - maybe factor out common "grouped render items" code?
-    DrawRingsSubGroup result = {};
-
-    s32 subGroupItemCount = min(group->maxCount - group->count, (s32)maxRenderItemsPerGroup);
-    ASSERT(subGroupItemCount > 0 && subGroupItemCount <= maxRenderItemsPerGroup);
-
-    smm reservedSize = sizeof(RenderItem_DrawRings_Item) * subGroupItemCount;
-    u8* data = appendRenderItemInternal(group->buffer, RenderItemType::DrawRings, sizeof(RenderItem_DrawRings), reservedSize);
-    group->buffer->hasRangeReserved = true;
-
-    result.header = (RenderItem_DrawRings*)data;
-    result.first = (RenderItem_DrawRings_Item*)(data + sizeof(RenderItem_DrawRings));
-    result.maxCount = subGroupItemCount;
-
-    *result.header = {};
-    result.header->count = 0;
-
-    return result;
+    return group->begin_sub_group();
 }
 
 void endCurrentSubGroup(DrawRingsGroup* group)
 {
-    // @Copypasta endCurrentSubGroup(DrawRectsGroup*) - maybe factor out common "grouped render items" code?
-    ASSERT(group->buffer->hasRangeReserved); // Attempted to finish a range while a range is not reserved!
-    group->buffer->hasRangeReserved = false;
-
-    group->buffer->currentChunk->used += group->currentSubGroup->header->count * sizeof(RenderItem_DrawRings_Item);
+    group->end_current_sub_group();
 }
 
 void addRing(DrawRingsGroup* group, V2 centre, float radius, float thickness, Colour color)
 {
-    // @Copypasta addRectInternal() - maybe factor out common "grouped render items" code?
-    ASSERT(group->count < group->maxCount);
-
-    if (group->currentSubGroup->header->count == group->currentSubGroup->maxCount) {
-        endCurrentSubGroup(group);
-        DrawRingsSubGroup* prevSubGroup = group->currentSubGroup;
-        group->currentSubGroup = temp_arena().allocate<DrawRingsSubGroup>();
-        *group->currentSubGroup = beginRingsSubGroup(group);
-        prevSubGroup->next = group->currentSubGroup;
-        group->currentSubGroup->prev = prevSubGroup;
-    }
-    ASSERT(group->currentSubGroup->header->count < group->currentSubGroup->maxCount);
-
-    RenderItem_DrawRings_Item* item = group->currentSubGroup->first + group->currentSubGroup->header->count++;
-    item->centre = centre;
-    item->radius = radius;
-    item->thickness = thickness;
-    item->color = color;
-
-    group->count++;
+    group->add_ring(centre, radius, thickness, color);
 }
 
 void endRingsGroup(DrawRingsGroup* group)
 {
-    endCurrentSubGroup(group);
+    group->end();
 }

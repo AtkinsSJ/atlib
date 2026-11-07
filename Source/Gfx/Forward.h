@@ -14,7 +14,7 @@ class Colour;
 class Cursor;
 class Ninepatch;
 class Palette;
-struct RenderBuffer;
+class RenderBuffer;
 class Renderer;
 class Shader;
 class Sprite;

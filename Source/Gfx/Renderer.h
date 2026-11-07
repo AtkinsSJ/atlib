@@ -10,6 +10,8 @@
 #include <Assets/Forward.h>
 #include <Gfx/Camera.h>
 #include <Gfx/Colour.h>
+#include <Gfx/DrawRectsGroup.h>
+#include <Gfx/DrawRingsGroup.h>
 #include <Gfx/Forward.h>
 #include <Gfx/RenderBuffer.h>
 #include <Gfx/WindowResizeListener.h>
@@ -26,26 +28,6 @@
 // General rendering code.
 
 float const SECONDS_PER_FRAME = 1.0f / 60.0f;
-
-struct DrawRingsSubGroup {
-    RenderItem_DrawRings* header;
-    RenderItem_DrawRings_Item* first;
-    s32 maxCount;
-
-    DrawRingsSubGroup* prev;
-    DrawRingsSubGroup* next;
-};
-
-// Think of this like a "handle". It has data inside but you shouldn't touch it from user code!
-struct DrawRingsGroup {
-    RenderBuffer* buffer;
-
-    DrawRingsSubGroup firstSubGroup;
-    DrawRingsSubGroup* currentSubGroup;
-
-    s32 count;
-    s32 maxCount;
-};
 
 class Renderer
     : public AssetManagerListener
@@ -207,9 +189,6 @@ void fillDrawRectPlaceholder(DrawRectPlaceholder* placeholder, Rect2 bounds, Col
 void fillDrawRectPlaceholder(DrawRectPlaceholder* placeholder, Rect2 bounds, Colour color00, Colour color01, Colour color10, Colour color11);
 void fillDrawRectPlaceholder(DrawRectPlaceholder* placeholder, Rect2 bounds, Sprite* sprite, Colour color);
 
-struct DrawNinepatchPlaceholder {
-    RenderItem_DrawRects_Item* firstRect;
-};
 void drawNinepatch(RenderBuffer* buffer, Rect2I bounds, s8 shaderID, Ninepatch* ninepatch, Colour color = Colour::white());
 DrawNinepatchPlaceholder appendDrawNinepatchPlaceholder(RenderBuffer* buffer, AssetMetadata* texture, s8 shaderID);
 void fillDrawNinepatchPlaceholder(DrawNinepatchPlaceholder* placeholder, Rect2I bounds, Ninepatch* ninepatch, Colour color = Colour::white());
@@ -227,7 +206,6 @@ DrawRectsGroup* beginRectsGroupForText(RenderBuffer* buffer, BitmapFont* font, s
 // group's current sub-group.
 // Basically, call this before adding anything, with count <= 255, and you'll be fine.
 RenderItem_DrawRects_Item* reserve(DrawRectsGroup* group, s32 count);
-void addRectInternal(DrawRectsGroup* group, Rect2 bounds, Colour color, Rect2 uv);
 void addGlyphRect(DrawRectsGroup* state, BitmapFontGlyph const* glyph, V2 position, Colour color);
 void addSpriteRect(DrawRectsGroup* state, Sprite* sprite, Rect2 bounds, Colour color);
 void addUntexturedRect(DrawRectsGroup* group, Rect2 bounds, Colour color);

@@ -5,9 +5,12 @@ add_library(Gfx STATIC
     Camera.cpp
     Colour.cpp
     Cursor.cpp
+    DrawRectsGroup.cpp
+    DrawRingsGroup.cpp
     Ninepatch.cpp
     OpenGL.cpp
     Palette.cpp
+    Placeholders.cpp
     RenderBuffer.cpp
     Renderer.cpp
     Shader.cpp
