@@ -7,7 +7,7 @@
 #pragma once
 
 #include <Util/Basic.h>
-#include <Util/Optional.h>
+#include <Util/ErrorOr.h>
 
 class Colour {
 public:
@@ -38,6 +38,11 @@ public:
     static Colour white()
     {
         return { 1, 1, 1, 1 };
+    }
+
+    static Colour black()
+    {
+        return { 0, 0, 0, 1 };
     }
 
     float r() const { return m_r; }
