@@ -14,6 +14,8 @@
 #include <Util/Rectangle.h>
 
 enum class RenderItemType : u8 {
+    Invalid,
+
     NextMemoryChunk,
 
     SetProjectionMatrix,
