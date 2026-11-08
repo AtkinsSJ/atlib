@@ -30,6 +30,35 @@ void RenderBufferChunk::clear_for_pool()
     nextChunk = nullptr;
 }
 
+RenderBufferReader::RenderBufferReader(Badge<RenderBuffer>, RenderBufferChunk* start_chunk)
+    : m_current_chunk(start_chunk)
+    , m_pos(0)
+{
+}
+
+bool RenderBufferReader::is_eof() const
+{
+    if (m_current_chunk == nullptr)
+        return true;
+
+    if (m_current_chunk->nextChunk)
+        return false;
+
+    return m_current_chunk->used <= m_pos;
+}
+
+RenderItemType RenderBufferReader::read_type()
+{
+    return read<RenderItemType>();
+}
+
+void RenderBufferReader::next_chunk()
+{
+    ASSERT(m_current_chunk);
+    m_current_chunk = m_current_chunk->nextChunk;
+    m_pos = 0;
+}
+
 void RenderBuffer::take_from(RenderBuffer& other)
 {
     if (other.currentChunk != nullptr) {
@@ -268,6 +297,11 @@ DrawNinepatchPlaceholder RenderBuffer::append_draw_ninepatch_placeholder(AssetMe
     rectsGroup.end();
 
     return placeholder;
+}
+
+RenderBufferReader RenderBuffer::read() const
+{
+    return RenderBufferReader { {}, firstChunk };
 }
 
 void RenderBuffer::initialize_from_pool(MemoryArena& arena, StringView source_name, Pool<RenderBufferChunk>* chunk_pool)

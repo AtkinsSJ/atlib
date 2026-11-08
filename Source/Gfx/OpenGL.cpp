@@ -136,32 +136,29 @@ void Renderer::render_internal()
     Matrix4 projection_matrix = Matrix4::identity();
 
     for (auto const* buffer : m_render_buffers) {
-        RenderBufferChunk* renderBufferChunk = buffer->firstChunk;
+        auto reader = buffer->read();
 
         DEBUG_BEGIN_RENDER_BUFFER(buffer->name, buffer->name);
 
-        smm pos = 0;
-        while ((renderBufferChunk != nullptr) && (pos < renderBufferChunk->used)) {
-            RenderItemType itemType = *((RenderItemType*)(renderBufferChunk->memory + pos));
-            pos += sizeof(RenderItemType);
+        while (!reader.is_eof()) {
+            auto item_type = reader.read_type();
 
-            switch (itemType) {
+            switch (item_type) {
             case RenderItemType::NextMemoryChunk: {
                 DEBUG_BLOCK_T("render: RenderItemType::NextMemoryChunk", DebugCodeDataTag::Renderer);
                 DEBUG_TRACK_RENDER_BUFFER_CHUNK();
-                renderBufferChunk = renderBufferChunk->nextChunk;
-                pos = 0;
+                reader.next_chunk();
             } break;
 
             case RenderItemType::SetProjectionMatrix: {
                 DEBUG_BLOCK_T("render: RenderItemType::SetProjectionMatrix", DebugCodeDataTag::Renderer);
-                RenderItem_SetProjectionMatrix* header = readRenderItem<RenderItem_SetProjectionMatrix>(renderBufferChunk, &pos);
-                projection_matrix = header->matrix;
+                auto& header = reader.read<RenderItem_SetProjectionMatrix>();
+                projection_matrix = header.matrix;
             } break;
 
             case RenderItemType::SetPalette: {
                 DEBUG_BLOCK_T("render: RenderItemType::SetPalette", DebugCodeDataTag::Renderer);
-                RenderItem_SetPalette* header = readRenderItem<RenderItem_SetPalette>(renderBufferChunk, &pos);
+                auto& header = reader.read<RenderItem_SetPalette>();
 
                 if (m_vertex_count > 0) {
                     flush_vertices();
@@ -181,34 +178,34 @@ void Renderer::render_internal()
                 glTexParameterfv(GL_TEXTURE_1D, GL_TEXTURE_BORDER_COLOR, borderColor);
                 glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
 
-                Colour* paletteData = readRenderData<Colour>(renderBufferChunk, &pos, header->paletteSize);
+                auto palette_data = reader.read_multiple<Colour>(header.paletteSize);
 
-                glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, header->paletteSize, 0, GL_RGBA, GL_FLOAT, paletteData);
+                glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, header.paletteSize, 0, GL_RGBA, GL_FLOAT, palette_data.raw_data());
 
                 glUniform1i(activeShader->uPaletteLoc, 1);
             } break;
 
             case RenderItemType::SetShader: {
                 DEBUG_BLOCK_T("render: RenderItemType::SetShader", DebugCodeDataTag::Renderer);
-                RenderItem_SetShader* header = readRenderItem<RenderItem_SetShader>(renderBufferChunk, &pos);
+                auto& header = reader.read<RenderItem_SetShader>();
 
                 if (m_vertex_count > 0) {
                     flush_vertices();
                 }
 
-                activeShader = use_shader(header->shaderID);
+                activeShader = use_shader(header.shaderID);
                 glUniformMatrix4fv(activeShader->uProjectionMatrixLoc, 1, false, projection_matrix.flat());
             } break;
 
             case RenderItemType::SetTexture: {
                 DEBUG_BLOCK_T("render: RenderItemType::SetTexture", DebugCodeDataTag::Renderer);
-                RenderItem_SetTexture* header = readRenderItem<RenderItem_SetTexture>(renderBufferChunk, &pos);
+                auto& header = reader.read<RenderItem_SetTexture>();
 
                 if (m_vertex_count > 0) {
                     flush_vertices();
                 }
 
-                if (header->texture == nullptr) {
+                if (header.texture == nullptr) {
                     // Raw texture!
                     glActiveTexture(GL_TEXTURE0 + 0);
                     glBindTexture(GL_TEXTURE_2D, m_raw_texture_id);
@@ -218,10 +215,10 @@ void Renderer::render_internal()
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-                    u8* pixelData = readRenderData<u8>(renderBufferChunk, &pos, header->width * header->height * header->bytesPerPixel);
+                    auto pixelData = reader.read_multiple<u8>(header.width * header.height * header.bytesPerPixel);
 
                     GLenum pixelFormat = 0;
-                    switch (header->bytesPerPixel) {
+                    switch (header.bytesPerPixel) {
                     case 1:
                         pixelFormat = GL_RED;
                         break;
@@ -238,11 +235,11 @@ void Renderer::render_internal()
                         ASSERT(false);
                     }
 
-                    upload_texture_2d(pixelFormat, header->width, header->height, pixelData);
+                    upload_texture_2d(pixelFormat, header.width, header.height, (void*)pixelData.raw_data());
                 } else {
-                    ASSERT(header->texture->state == AssetMetadata::State::Loaded);
+                    ASSERT(header.texture->state == AssetMetadata::State::Loaded);
 
-                    auto& texture = dynamic_cast<Texture&>(*header->texture->loaded_asset);
+                    auto& texture = dynamic_cast<Texture&>(*header.texture->loaded_asset);
 
                     glActiveTexture(GL_TEXTURE0 + 0);
                     glBindTexture(GL_TEXTURE_2D, texture.gl.glTextureID);
@@ -261,25 +258,25 @@ void Renderer::render_internal()
                 }
 
                 glUniform1i(activeShader->uTextureLoc, 0);
-                m_current_texture = header->texture;
+                m_current_texture = header.texture;
             } break;
 
             case RenderItemType::Clear: {
                 DEBUG_BLOCK_T("render: RenderItemType::Clear", DebugCodeDataTag::Renderer);
-                RenderItem_Clear* header = readRenderItem<RenderItem_Clear>(renderBufferChunk, &pos);
+                auto& header = reader.read<RenderItem_Clear>();
 
                 // NB: We MUST flush here, otherwise we could render some things after the clear instead of before it!
                 if (m_vertex_count > 0) {
                     flush_vertices();
                 }
 
-                glClearColor(header->clearColor.r(), header->clearColor.g(), header->clearColor.b(), header->clearColor.a());
+                glClearColor(header.clearColor.r(), header.clearColor.g(), header.clearColor.b(), header.clearColor.a());
                 glClear(GL_COLOR_BUFFER_BIT);
             } break;
 
             case RenderItemType::BeginScissor: {
                 DEBUG_BLOCK_T("render: RenderItemType::BeginScissor", DebugCodeDataTag::Renderer);
-                RenderItem_BeginScissor* header = readRenderItem<RenderItem_BeginScissor>(renderBufferChunk, &pos);
+                auto& header = reader.read<RenderItem_BeginScissor>();
 
                 // NB: We MUST flush here, otherwise we could render some things after the scissor instead of before it!
                 if (m_vertex_count > 0) {
@@ -290,14 +287,14 @@ void Renderer::render_internal()
                     glEnable(GL_SCISSOR_TEST);
                 }
 
-                m_scissor_stack.push(header->bounds);
+                m_scissor_stack.push(header.bounds);
 
-                glScissor(header->bounds.x(), header->bounds.y(), header->bounds.width(), header->bounds.height());
+                glScissor(header.bounds.x(), header.bounds.y(), header.bounds.width(), header.bounds.height());
             } break;
 
             case RenderItemType::EndScissor: {
                 DEBUG_BLOCK_T("render: RenderItemType::EndScissor", DebugCodeDataTag::Renderer);
-                [[maybe_unused]] RenderItem_EndScissor* header = readRenderItem<RenderItem_EndScissor>(renderBufferChunk, &pos);
+                [[maybe_unused]] auto& header = reader.read<RenderItem_EndScissor>();
 
                 // NB: We MUST flush here, otherwise we could render some things after the scissor is removed!
                 // (This bug took me nearly half an hour to figure out.)
@@ -318,37 +315,36 @@ void Renderer::render_internal()
 
             case RenderItemType::DrawRects: {
                 DEBUG_BLOCK_T("render: RenderItemType::DrawRects", DebugCodeDataTag::Renderer);
-                RenderItem_DrawRects* header = readRenderItem<RenderItem_DrawRects>(renderBufferChunk, &pos);
+                auto& header = reader.read<RenderItem_DrawRects>();
+                auto rects = reader.read_multiple<RenderItem_DrawRects_Item>(header.count);
 
-                for (s32 itemIndex = 0; itemIndex < header->count; itemIndex++) {
-                    RenderItem_DrawRects_Item* item = readRenderItem<RenderItem_DrawRects_Item>(renderBufferChunk, &pos);
-
+                for (auto const& rect : rects) {
                     if (m_vertex_count + 4 > RENDER_BATCH_VERTEX_COUNT) {
                         flush_vertices();
                     }
-                    push_quad_with_uv(item->bounds, item->color, item->uv);
+                    push_quad_with_uv(rect.bounds, rect.color, rect.uv);
                 }
             } break;
 
             case RenderItemType::DrawSingleRect: {
                 DEBUG_BLOCK_T("render: RenderItemType::DrawSingleRect", DebugCodeDataTag::Renderer);
-                RenderItem_DrawSingleRect* item = readRenderItem<RenderItem_DrawSingleRect>(renderBufferChunk, &pos);
+                auto& item = reader.read<RenderItem_DrawSingleRect>();
 
                 if (m_vertex_count + 4 > RENDER_BATCH_VERTEX_COUNT) {
                     flush_vertices();
                 }
-                push_quad_with_uv_multicolor(item->bounds, item->color00, item->color01, item->color10, item->color11, item->uv);
+                push_quad_with_uv_multicolor(item.bounds, item.color00, item.color01, item.color10, item.color11, item.uv);
 
             } break;
 
             case RenderItemType::DrawRings: {
                 DEBUG_BLOCK_T("render: RenderItemType::DrawRings", DebugCodeDataTag::Renderer);
-                RenderItem_DrawRings* header = readRenderItem<RenderItem_DrawRings>(renderBufferChunk, &pos);
+                auto& header = reader.read<RenderItem_DrawRings>();
 
-                for (s32 itemIndex = 0; itemIndex < header->count; itemIndex++) {
-                    RenderItem_DrawRings_Item* item = readRenderItem<RenderItem_DrawRings_Item>(renderBufferChunk, &pos);
+                for (s32 itemIndex = 0; itemIndex < header.count; itemIndex++) {
+                    auto& item = reader.read<RenderItem_DrawRings_Item>();
 
-                    s32 ringSegmentsCount = ceil_s32(2.0f * PI32 * item->radius); // TODO: some kind of "detail" parameter?
+                    s32 ringSegmentsCount = ceil_s32(2.0f * PI32 * item.radius); // TODO: some kind of "detail" parameter?
                     if (ringSegmentsCount * 4 > RENDER_BATCH_VERTEX_COUNT) {
                         s32 maxRingSegmentsCount = RENDER_BATCH_VERTEX_COUNT / 4;
                         logWarn("We want to draw a ring with {0} segments, but the maximum we can fit in a render batch is {1}!"_s, { formatInt(ringSegmentsCount), formatInt(maxRingSegmentsCount) });
@@ -360,8 +356,8 @@ void Renderer::render_internal()
                         flush_vertices();
                     }
 
-                    float minRadius = item->radius - (item->thickness * 0.5f);
-                    float maxRadius = minRadius + item->thickness;
+                    float minRadius = item.radius - (item.thickness * 0.5f);
+                    float maxRadius = minRadius + item.thickness;
                     float radPerSegment = (2.0f * PI32) / (float)ringSegmentsCount;
 
                     for (s32 segmentIndex = 0; segmentIndex < ringSegmentsCount; segmentIndex++) {
@@ -371,24 +367,24 @@ void Renderer::render_internal()
                         float startAngle = segmentIndex * radPerSegment;
                         float endAngle = (segmentIndex + 1) * radPerSegment;
 
-                        vertex->pos.x = item->centre.x + (minRadius * cos32(startAngle));
-                        vertex->pos.y = item->centre.y + (minRadius * sin32(startAngle));
-                        vertex->color = item->color;
+                        vertex->pos.x = item.centre.x + (minRadius * cos32(startAngle));
+                        vertex->pos.y = item.centre.y + (minRadius * sin32(startAngle));
+                        vertex->color = item.color;
                         vertex++;
 
-                        vertex->pos.x = item->centre.x + (minRadius * cos32(endAngle));
-                        vertex->pos.y = item->centre.y + (minRadius * sin32(endAngle));
-                        vertex->color = item->color;
+                        vertex->pos.x = item.centre.x + (minRadius * cos32(endAngle));
+                        vertex->pos.y = item.centre.y + (minRadius * sin32(endAngle));
+                        vertex->color = item.color;
                         vertex++;
 
-                        vertex->pos.x = item->centre.x + (maxRadius * cos32(endAngle));
-                        vertex->pos.y = item->centre.y + (maxRadius * sin32(endAngle));
-                        vertex->color = item->color;
+                        vertex->pos.x = item.centre.x + (maxRadius * cos32(endAngle));
+                        vertex->pos.y = item.centre.y + (maxRadius * sin32(endAngle));
+                        vertex->color = item.color;
                         vertex++;
 
-                        vertex->pos.x = item->centre.x + (maxRadius * cos32(startAngle));
-                        vertex->pos.y = item->centre.y + (maxRadius * sin32(startAngle));
-                        vertex->color = item->color;
+                        vertex->pos.x = item.centre.x + (maxRadius * cos32(startAngle));
+                        vertex->pos.y = item.centre.y + (maxRadius * sin32(startAngle));
+                        vertex->color = item.color;
 
                         m_vertex_count += 4;
 

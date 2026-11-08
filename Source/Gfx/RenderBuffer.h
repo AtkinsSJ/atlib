@@ -33,8 +33,47 @@ struct RenderBufferChunk final : public Poolable<RenderBufferChunk> {
     RenderBufferChunk* nextChunk;
 };
 
+class RenderBufferReader {
+public:
+    RenderBufferReader(Badge<RenderBuffer>, RenderBufferChunk* start_chunk);
+
+    bool is_eof() const;
+
+    RenderItemType read_type();
+
+    template<typename T>
+    T const& read()
+    {
+        ASSERT(m_current_chunk);
+        ASSERT(m_pos + sizeof(T) <= m_current_chunk->used);
+
+        T* item = reinterpret_cast<T*>(m_current_chunk->memory + m_pos);
+        m_pos += sizeof(T);
+        return *item;
+    }
+
+    template<typename T>
+    ReadonlySpan<T> read_multiple(size_t count)
+    {
+        ASSERT(m_current_chunk);
+        ASSERT(m_pos + count * sizeof(T) <= m_current_chunk->used);
+
+        T* item = reinterpret_cast<T*>(m_current_chunk->memory + m_pos);
+        m_pos += sizeof(T) * count;
+        return ReadonlySpan { count, item };
+    }
+
+    void next_chunk();
+
+private:
+    RenderBufferChunk* m_current_chunk;
+    size_t m_pos;
+};
+
 class RenderBuffer final : public Poolable<RenderBuffer> {
 public:
+    friend class RenderBufferReader;
+
     RenderBuffer() = default;
     void take_from(RenderBuffer& other);
 
@@ -102,6 +141,8 @@ public:
 
         return result;
     }
+
+    RenderBufferReader read() const;
 
     // Poolable
     void initialize_from_pool(MemoryArena&, StringView source_name, Pool<RenderBufferChunk>*);

@@ -122,19 +122,3 @@ protected:
 
 Renderer& the_renderer();
 void freeRenderer();
-
-template<typename T>
-T* readRenderItem(RenderBufferChunk* renderBufferChunk, smm* pos)
-{
-    T* item = (T*)(renderBufferChunk->memory + *pos);
-    *pos += sizeof(T);
-    return item;
-}
-
-template<typename T>
-T* readRenderData(RenderBufferChunk* renderBufferChunk, smm* pos, s32 count)
-{
-    T* item = (T*)(renderBufferChunk->memory + *pos);
-    *pos += sizeof(T) * count;
-    return item;
-}
