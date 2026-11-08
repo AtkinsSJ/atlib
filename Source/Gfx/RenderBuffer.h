@@ -77,6 +77,9 @@ public:
     RenderBuffer() = default;
     void take_from(RenderBuffer& other);
 
+    bool is_empty() const;
+    String const& name() const { return m_name; }
+
     void add_set_projection_matrix(Matrix4 const&);
     void add_set_shader(s8 shaderID);
     void add_clear(Colour clear_color = {});
@@ -133,14 +136,19 @@ public:
     template<typename T>
     RenderItemAndData<T> append_render_item_with_reserved_data(RenderItemType type, size_t reserved_size)
     {
+        ASSERT(!m_has_range_reserved);
+
         RenderItemAndData<T> result = {};
 
         u8* buffer_data = append_render_item_internal(type, sizeof(T), reserved_size);
         result.item = new (buffer_data) T();
         result.data = { reserved_size, buffer_data + sizeof(T) };
 
+        m_has_range_reserved = true;
         return result;
     }
+
+    void consume_reserved_memory(size_t size);
 
     RenderBufferReader read() const;
 
@@ -155,16 +163,15 @@ private:
     // NB: The Rects drawn must all have the same Texture!
     DrawRectsGroup& begin_rects_group_internal(Optional<AssetMetadata&> texture, s32 max_count, s8 shader_id);
 
-public: // FIXME: Shouldn't be public!
-    String name;
+    String m_name;
 
-    RenderBufferChunk* firstChunk;
-    RenderBufferChunk* currentChunk;
-    Pool<RenderBufferChunk>* chunkPool;
+    RenderBufferChunk* m_first_chunk;
+    RenderBufferChunk* m_current_chunk;
+    Pool<RenderBufferChunk>* m_chunk_pool;
 
     // Transient stuff
-    bool hasRangeReserved;
-    s32 scissorCount;
-    s8 currentShader;
-    AssetMetadata* currentTexture;
+    bool m_has_range_reserved;
+    s32 m_scissor_count;
+    s8 m_current_shader;
+    AssetMetadata* m_current_texture;
 };

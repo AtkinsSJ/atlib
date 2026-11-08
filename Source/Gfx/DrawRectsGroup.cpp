@@ -112,7 +112,6 @@ DrawRectsSubGroup DrawRectsGroup::begin_sub_group()
 
     size_t reserved_size = sizeof(RenderItem_DrawRects_Item) * sub_group_item_count;
     auto [item, data] = buffer->append_render_item_with_reserved_data<RenderItem_DrawRects>(RenderItemType::DrawRects, reserved_size);
-    buffer->hasRangeReserved = true;
 
     result.header = item;
     result.first = reinterpret_cast<RenderItem_DrawRects_Item*>(data.raw_data());
@@ -126,9 +125,7 @@ DrawRectsSubGroup DrawRectsGroup::begin_sub_group()
 
 void DrawRectsGroup::end_current_sub_group()
 {
-    ASSERT(buffer->hasRangeReserved); // Attempted to finish a range while a range is not reserved!
-    buffer->hasRangeReserved = false;
-    buffer->currentChunk->used += currentSubGroup->header->count * sizeof(RenderItem_DrawRects_Item);
+    buffer->consume_reserved_memory(currentSubGroup->header->count * sizeof(RenderItem_DrawRects_Item));
 }
 
 void DrawRectsGroup::end()

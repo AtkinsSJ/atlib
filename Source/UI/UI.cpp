@@ -62,7 +62,7 @@ void endFrame()
 
     if (uiState.openDropDownListRenderBuffer != nullptr) {
         // If the buffer is empty, we didn't draw the dropdown this frame, so we should mark it as closed
-        if (uiState.openDropDownListRenderBuffer->firstChunk == nullptr) {
+        if (uiState.openDropDownListRenderBuffer->is_empty()) {
             // FIXME: Reintroduce this when drop-downs are re-enabled
             // closeDropDownList();
         } else {

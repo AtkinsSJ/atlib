@@ -138,7 +138,7 @@ void Renderer::render_internal()
     for (auto const* buffer : m_render_buffers) {
         auto reader = buffer->read();
 
-        DEBUG_BEGIN_RENDER_BUFFER(buffer->name, buffer->name);
+        DEBUG_BEGIN_RENDER_BUFFER(buffer->name(), buffer->name());
 
         while (!reader.is_eof()) {
             auto item_type = reader.read_type();

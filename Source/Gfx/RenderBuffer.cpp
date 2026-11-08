@@ -61,23 +61,28 @@ void RenderBufferReader::next_chunk()
 
 void RenderBuffer::take_from(RenderBuffer& other)
 {
-    if (other.currentChunk != nullptr) {
+    if (other.m_current_chunk != nullptr) {
         // If the target is empty, we can take a shortcut and just copy the pointers
-        if (this->currentChunk == nullptr) {
-            this->firstChunk = other.firstChunk;
-            this->currentChunk = other.currentChunk;
+        if (this->m_current_chunk == nullptr) {
+            this->m_first_chunk = other.m_first_chunk;
+            this->m_current_chunk = other.m_current_chunk;
         } else {
-            ASSERT((this->currentChunk->size - this->currentChunk->used) > sizeof(RenderItemType)); // Need space for the next-chunk message
+            ASSERT((this->m_current_chunk->size - this->m_current_chunk->used) > sizeof(RenderItemType)); // Need space for the next-chunk message
             append_render_item_type(RenderItemType::NextMemoryChunk);
-            this->currentChunk->nextChunk = other.firstChunk;
-            other.firstChunk->prevChunk = this->currentChunk;
-            this->currentChunk = other.currentChunk;
+            this->m_current_chunk->nextChunk = other.m_first_chunk;
+            other.m_first_chunk->prevChunk = this->m_current_chunk;
+            this->m_current_chunk = other.m_current_chunk;
         }
     }
 
-    other.firstChunk = nullptr;
-    other.currentChunk = nullptr;
+    other.m_first_chunk = nullptr;
+    other.m_current_chunk = nullptr;
     other.clear_for_pool(); // Make sure things are reset
+}
+
+bool RenderBuffer::is_empty() const
+{
+    return m_first_chunk == nullptr || m_first_chunk->used == 0;
 }
 
 void RenderBuffer::add_set_projection_matrix(Matrix4 const& matrix)
@@ -87,32 +92,32 @@ void RenderBuffer::add_set_projection_matrix(Matrix4 const& matrix)
 }
 void RenderBuffer::add_set_shader(s8 shader_id)
 {
-    if (currentShader != shader_id) {
+    if (m_current_shader != shader_id) {
         auto& shaderItem = append_render_item<RenderItem_SetShader>(RenderItemType::SetShader);
         shaderItem.shaderID = shader_id;
 
-        currentShader = shader_id;
+        m_current_shader = shader_id;
         // NB: Setting the opengl shader loses the texture, so we replicate that here.
         // I suppose in the future we could make sure to bind the texture when the shader changes, but
         // most of the time we want to set a new texture anyway, so that would be a waste of cpu time.
-        currentTexture = nullptr;
+        m_current_texture = nullptr;
     }
 }
 void RenderBuffer::add_set_texture(AssetMetadata& texture)
 {
     ASSERT(texture.state == AssetMetadata::State::Loaded);
 
-    if (currentTexture != &texture) {
+    if (m_current_texture != &texture) {
         auto& textureItem = append_render_item<RenderItem_SetTexture>(RenderItemType::SetTexture);
         textureItem.texture = &texture;
 
-        currentTexture = &texture;
+        m_current_texture = &texture;
     }
 }
 
 void RenderBuffer::add_set_texture_raw(s32 width, s32 height, u8 bytes_per_pixel, ReadonlySpan<u8> pixels)
 {
-    currentTexture = nullptr;
+    m_current_texture = nullptr;
 
     smm pixel_data_size = (width * height * bytes_per_pixel);
     ASSERT(pixel_data_size == pixels.size());
@@ -163,14 +168,14 @@ void RenderBuffer::add_begin_scissor(Rect2I bounds)
     ASSERT(scissor.bounds.width() >= 0);
     ASSERT(scissor.bounds.height() >= 0);
 
-    scissorCount++;
+    m_scissor_count++;
 }
 
 void RenderBuffer::add_end_scissor()
 {
-    ASSERT(scissorCount > 0);
+    ASSERT(m_scissor_count > 0);
     append_render_item<RenderItem_EndScissor>(RenderItemType::EndScissor);
-    scissorCount--;
+    m_scissor_count--;
 }
 
 void RenderBuffer::draw_single_sprite(Sprite const& sprite, Rect2 bounds, s8 shader_id, Colour colour)
@@ -280,7 +285,7 @@ DrawRectPlaceholder RenderBuffer::append_draw_rect_placeholder(s8 shader_id, boo
 
         // We need to clear this, because we don't know what this texture will be, so any following draw calls
         // have to assume that they need to set their texture
-        currentTexture = nullptr;
+        m_current_texture = nullptr;
 
         result.set_texture_item({}, textureItem);
     }
@@ -299,47 +304,54 @@ DrawNinepatchPlaceholder RenderBuffer::append_draw_ninepatch_placeholder(AssetMe
     return placeholder;
 }
 
+void RenderBuffer::consume_reserved_memory(size_t size)
+{
+    ASSERT(m_has_range_reserved); // Attempted to finish a range while a range is not reserved!
+    m_has_range_reserved = false;
+    m_current_chunk->used += size;
+}
+
 RenderBufferReader RenderBuffer::read() const
 {
-    return RenderBufferReader { {}, firstChunk };
+    return RenderBufferReader { {}, m_first_chunk };
 }
 
 void RenderBuffer::initialize_from_pool(MemoryArena& arena, StringView source_name, Pool<RenderBufferChunk>* chunk_pool)
 {
-    this->name = arena.allocate_string(source_name);
-    this->name.hash();
+    this->m_name = arena.allocate_string(source_name);
+    this->m_name.hash();
 
-    this->hasRangeReserved = false;
-    this->scissorCount = 0;
+    this->m_has_range_reserved = false;
+    this->m_scissor_count = 0;
 
-    this->chunkPool = chunk_pool;
+    this->m_chunk_pool = chunk_pool;
 
-    this->firstChunk = nullptr;
-    this->currentChunk = nullptr;
+    this->m_first_chunk = nullptr;
+    this->m_current_chunk = nullptr;
 
-    this->currentShader = -1;
-    this->currentTexture = nullptr;
+    this->m_current_shader = -1;
+    this->m_current_texture = nullptr;
 }
 
 void RenderBuffer::clear_for_pool()
 {
-    currentShader = -1;
-    currentTexture = nullptr;
+    m_current_shader = -1;
+    m_current_texture = nullptr;
 
-    for (RenderBufferChunk* chunk = firstChunk; chunk != nullptr;) {
+    for (RenderBufferChunk* chunk = m_first_chunk; chunk != nullptr;) {
         // NB: `discard()` wipes the nextChunk member, so we need to grab it first.
         auto* next_chunk = chunk->nextChunk;
-        chunkPool->discard(*chunk);
+        m_chunk_pool->discard(*chunk);
         chunk = next_chunk;
     }
 
-    firstChunk = nullptr;
-    currentChunk = nullptr;
+    m_first_chunk = nullptr;
+    m_current_chunk = nullptr;
 }
 void RenderBuffer::append_render_item_type(RenderItemType type)
 {
-    *reinterpret_cast<RenderItemType*>(currentChunk->memory + currentChunk->used) = type;
-    currentChunk->used += sizeof(RenderItemType);
+    *reinterpret_cast<RenderItemType*>(m_current_chunk->memory + m_current_chunk->used) = type;
+    m_current_chunk->used += sizeof(RenderItemType);
 }
 
 // NB: reservedSize is for extra data that you want to make sure there is room for,
@@ -347,37 +359,37 @@ void RenderBuffer::append_render_item_type(RenderItemType type)
 // in between, and make sure to allocate the space you used when you're done!
 u8* RenderBuffer::append_render_item_internal(RenderItemType type, smm size, smm reserved_size)
 {
-    ASSERT(!hasRangeReserved); // Can't append renderitems while a range is reserved!
+    ASSERT(!m_has_range_reserved); // Can't append renderitems while a range is reserved!
 
     smm totalSizeRequired = static_cast<smm>(sizeof(RenderItemType) + size + reserved_size + sizeof(RenderItemType));
 
-    if (currentChunk == nullptr || ((currentChunk->size - currentChunk->used) <= totalSizeRequired)) {
+    if (m_current_chunk == nullptr || ((m_current_chunk->size - m_current_chunk->used) <= totalSizeRequired)) {
         // Out of room! Push a "go to next chunk" item and append some more memory
-        if (currentChunk != nullptr) {
-            ASSERT((currentChunk->size - currentChunk->used) > sizeof(RenderItemType)); // Need space for the next-chunk message
+        if (m_current_chunk != nullptr) {
+            ASSERT((m_current_chunk->size - m_current_chunk->used) > sizeof(RenderItemType)); // Need space for the next-chunk message
             append_render_item_type(RenderItemType::NextMemoryChunk);
         }
 
-        RenderBufferChunk& new_chunk = chunkPool->obtain();
+        RenderBufferChunk& new_chunk = m_chunk_pool->obtain();
         new_chunk.used = 0;
         new_chunk.prevChunk = nullptr;
         new_chunk.nextChunk = nullptr;
 
         // Add to the renderbuffer
-        if (currentChunk == nullptr) {
-            firstChunk = &new_chunk;
-            currentChunk = &new_chunk;
+        if (m_current_chunk == nullptr) {
+            m_first_chunk = &new_chunk;
+            m_current_chunk = &new_chunk;
         } else {
-            currentChunk->nextChunk = &new_chunk;
-            new_chunk.prevChunk = currentChunk;
+            m_current_chunk->nextChunk = &new_chunk;
+            new_chunk.prevChunk = m_current_chunk;
         }
 
-        currentChunk = &new_chunk;
+        m_current_chunk = &new_chunk;
     }
 
     append_render_item_type(type);
-    u8* result = (currentChunk->memory + currentChunk->used);
-    currentChunk->used += size;
+    u8* result = (m_current_chunk->memory + m_current_chunk->used);
+    m_current_chunk->used += size;
     return result;
 }
 
