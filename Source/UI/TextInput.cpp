@@ -408,7 +408,7 @@ Rect2I drawTextInput(RenderBuffer* renderBuffer, TextInput* textInput, TextInput
         // Shifted 1px left for better legibility of text
         caretRect.set_x(caretRect.x() - 1.0f);
 
-        drawSingleRect(renderBuffer, caretRect, renderer.shaderIds.untextured, style->textColor);
+        renderBuffer->draw_single_rect(caretRect, renderer.shaderIds.untextured, style->textColor);
     }
 
     return bounds;

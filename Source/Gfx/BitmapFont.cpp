@@ -344,7 +344,7 @@ void BitmapFont::unload(AssetMetadata&)
     asset_manager().deallocate(m_glyph_entries);
 }
 
-void _alignText(DrawRectsGroup* state, s32 startIndex, s32 endIndexInclusive, s32 lineWidth, s32 boundsWidth, Alignment align)
+void _alignText(DrawRectsGroup& state, s32 startIndex, s32 endIndexInclusive, s32 lineWidth, s32 boundsWidth, Alignment align)
 {
     if (lineWidth == 0) {
         return;
@@ -353,12 +353,12 @@ void _alignText(DrawRectsGroup* state, s32 startIndex, s32 endIndexInclusive, s3
     switch (align.horizontal) {
     case HAlign::Right: {
         s32 offsetX = boundsWidth - lineWidth;
-        offsetRange(state, startIndex, endIndexInclusive, (float)offsetX, 0);
+        state.offset_range(startIndex, endIndexInclusive, static_cast<float>(offsetX), 0);
     } break;
 
     case HAlign::Centre: {
         s32 offsetX = (boundsWidth - lineWidth) / 2;
-        offsetRange(state, startIndex, endIndexInclusive, (float)offsetX, 0);
+        state.offset_range(startIndex, endIndexInclusive, static_cast<float>(offsetX), 0);
     } break;
 
     case HAlign::Left: {
@@ -406,7 +406,7 @@ void drawText(RenderBuffer* renderBuffer, BitmapFont* font, StringView text, Rec
     // s32 glyphsToOutput = countGlyphs(text.chars, text.length);
     s32 glyphsToOutput = text.length();
 
-    DrawRectsGroup* group = beginRectsGroupForText(renderBuffer, font, shaderID, glyphsToOutput);
+    auto& group = renderBuffer->begin_rects_group_for_text(*font, glyphsToOutput, shaderID);
 
     s32 currentX = 0;
     s32 currentY = 0;
@@ -515,7 +515,7 @@ void drawText(RenderBuffer* renderBuffer, BitmapFont* font, StringView text, Rec
                             // Offset from where the word was, to its new position
                             float offsetX = (float)-(currentLineWidth + whitespaceWidthBeforeCurrentWord);
                             float offsetY = (float)font->line_height();
-                            offsetRange(group, startOfCurrentWord, glyphCount - 1, offsetX, offsetY);
+                            group.offset_range(startOfCurrentWord, glyphCount - 1, offsetX, offsetY);
 
                             // Set the current position to where the next word will start
                             currentX = currentWordWidth;
@@ -528,7 +528,7 @@ void drawText(RenderBuffer* renderBuffer, BitmapFont* font, StringView text, Rec
                         whitespaceWidthBeforeCurrentWord = 0;
                     }
 
-                    addGlyphRect(group, glyph, v2(topLeft.x + currentX, topLeft.y + currentY), color);
+                    group.add_glyph_rect(*glyph, v2(topLeft.x + currentX, topLeft.y + currentY), color);
 
                     currentChar++;
                     if (caretInfoResult && currentChar == caretIndex) {
@@ -557,8 +557,8 @@ void drawText(RenderBuffer* renderBuffer, BitmapFont* font, StringView text, Rec
         caretInfoResult->caretPosition = bounds.position() + v2i(currentX, currentY);
     }
 
-    ASSERT(glyphCount == group->count);
-    endRectsGroup(group);
+    ASSERT(glyphCount == group.count);
+    group.end();
 }
 
 V2I calculateTextPosition(V2I origin, V2I size, Alignment align)

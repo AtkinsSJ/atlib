@@ -406,7 +406,7 @@ void Panel::end(bool shrinkToContentHeight, bool shrinkToContentWidth)
 
     if (!hasAddedWidgets) {
         if (!hideWidgets) {
-            addBeginScissor(renderBuffer, bounds);
+            renderBuffer->add_begin_scissor(bounds);
 
             // Prepare to render background
             background.preparePlaceholder(renderBuffer);
@@ -435,7 +435,7 @@ void Panel::end(bool shrinkToContentHeight, bool shrinkToContentWidth)
         background.fillPlaceholder(bounds);
 
         // Clear any scissor stuff
-        addEndScissor(renderBuffer);
+        renderBuffer->add_end_scissor();
 
         popInputScissorRect();
     }
@@ -450,7 +450,7 @@ void Panel::prepareForWidgets()
 {
     if (!hasAddedWidgets) {
         if (!hideWidgets) {
-            addBeginScissor(renderBuffer, bounds);
+            renderBuffer->add_begin_scissor(bounds);
 
             pushInputScissorRect(bounds);
 

@@ -203,7 +203,7 @@ void updateAndRenderWindows()
 
         // Modal windows get a translucent colour over everything behind them
         if (isModal) {
-            drawSingleRect(window.renderBuffer, renderer.ui_camera().screen_rect(), renderer.shaderIds.untextured, Colour::from_rgb_255(64, 64, 64, 128));
+            window.renderBuffer->draw_single_rect(renderer.ui_camera().screen_rect(), renderer.shaderIds.untextured, Colour::from_rgb_255(64, 64, 64, 128));
         }
 
         // If the window is new, make sure it has a valid area by running the WindowProc once
@@ -292,7 +292,7 @@ void updateAndRenderWindows()
             String closeButtonString = "X"_s;
             auto closeButtonColorHover = window_style.titleBarButtonHoverColor;
 
-            drawSingleRect(window.renderBuffer, barArea, renderer.shaderIds.untextured, barColor);
+            window.renderBuffer->draw_single_rect(barArea, renderer.shaderIds.untextured, barColor);
             String titleString = window.title.get_string();
 
             auto& title_style = window_style.titleLabelStyle.get();
@@ -304,7 +304,7 @@ void updateAndRenderWindows()
             auto& titleFont = title_style.font.get();
             if (hoveringOverCloseButton
                 && (!isMouseInputHandled() || windowIndex == 0)) {
-                drawSingleRect(window.renderBuffer, closeButtonRect, renderer.shaderIds.untextured, closeButtonColorHover);
+                window.renderBuffer->draw_single_rect(closeButtonRect, renderer.shaderIds.untextured, closeButtonColorHover);
             }
             V2I closeTextSize = titleFont.calculate_text_size(closeButtonString);
             Rect2I closeTextBounds = Rect2I::create_aligned(v2i(closeButtonRect.centre()), closeTextSize, Alignment::centre());

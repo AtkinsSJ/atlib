@@ -189,7 +189,7 @@ public:
         Rect2I bounds { topLeft, textSize };
 
         if (draw_highlight && bounds.contains(v2i(m_camera.mouse_position()))) {
-            drawSingleRect(&m_render_buffer, bounds, m_untextured_shader_id, text_color * 0.5f);
+            m_render_buffer.draw_single_rect(bounds, m_untextured_shader_id, text_color * 0.5f);
             drawText(&m_render_buffer, &m_font, text, bounds, align, Colour::from_rgb_255(0, 0, 0, 255), m_text_shader_id);
         } else {
             drawText(&m_render_buffer, &m_font, text, bounds, align, text_color, m_text_shader_id);
@@ -242,28 +242,28 @@ void renderDebugData(DebugState* debugState)
 
     u64 cyclesPerSecond = SDL_GetPerformanceFrequency();
     u32 rfi = debugState->readingFrameIndex;
-    drawSingleRect(renderBuffer, Rect2 { 0, 0, ui_camera.screen_rect().width(), ui_camera.screen_rect().height() }, renderer.shaderIds.untextured, Colour::from_rgb_255(0, 0, 0, 128));
+    renderBuffer->draw_single_rect(Rect2 { 0, 0, ui_camera.screen_rect().width(), ui_camera.screen_rect().height() }, renderer.shaderIds.untextured, Colour::from_rgb_255(0, 0, 0, 128));
 
     // Draw a "nice" chart!
     {
         auto graphHeight = 150;
-        drawSingleRect(renderBuffer, Rect2 { 0, ui_camera.screen_rect().height() - graphHeight, ui_camera.screen_rect().width(), 1 }, renderer.shaderIds.untextured, Colour::from_rgb_255(255, 255, 255, 128));
-        drawSingleRect(renderBuffer, Rect2 { 0, ui_camera.screen_rect().height() - graphHeight * 2, ui_camera.screen_rect().width(), 1 }, renderer.shaderIds.untextured, Colour::from_rgb_255(255, 255, 255, 128));
+        renderBuffer->draw_single_rect(Rect2 { 0, ui_camera.screen_rect().height() - graphHeight, ui_camera.screen_rect().width(), 1 }, renderer.shaderIds.untextured, Colour::from_rgb_255(255, 255, 255, 128));
+        renderBuffer->draw_single_rect(Rect2 { 0, ui_camera.screen_rect().height() - graphHeight * 2, ui_camera.screen_rect().width(), 1 }, renderer.shaderIds.untextured, Colour::from_rgb_255(255, 255, 255, 128));
         float targetCyclesPerFrame = cyclesPerSecond / 60.0f;
         float barWidth = ui_camera.screen_rect().width() / (float)DEBUG_FRAMES_COUNT;
         float barHeightPerCycle = graphHeight / targetCyclesPerFrame;
         Colour barColor = Colour::from_rgb_255(255, 0, 0, 128);
         Colour activeBarColor = Colour::from_rgb_255(255, 255, 0, 128);
         u32 barIndex = 0;
-        DrawRectsGroup* rectsGroup = beginRectsGroupUntextured(renderBuffer, renderer.shaderIds.untextured, DEBUG_FRAMES_COUNT);
+        auto& rectsGroup = renderBuffer->begin_rects_group_untextured(DEBUG_FRAMES_COUNT);
         for (u32 fi = debugState->writingFrameIndex + 1;
             fi != debugState->writingFrameIndex;
             fi = wrap<u32>(fi + 1, DEBUG_FRAMES_COUNT)) {
             u64 frameCycles = debugState->frameEndCycle[fi] - debugState->frameStartCycle[fi];
             float barHeight = barHeightPerCycle * (float)frameCycles;
-            addUntexturedRect(rectsGroup, Rect2 { barWidth * barIndex++, ui_camera.screen_rect().height() - barHeight, barWidth, barHeight }, fi == rfi ? activeBarColor : barColor);
+            rectsGroup.add_untextured_rect(Rect2 { barWidth * barIndex++, ui_camera.screen_rect().height() - barHeight, barWidth, barHeight }, fi == rfi ? activeBarColor : barColor);
         }
-        endRectsGroup(rectsGroup);
+        rectsGroup.end();
     }
 
     DebugTextPrinter textState { the_renderer(), font, Colour::white(), 16, false, HAlign::Left };

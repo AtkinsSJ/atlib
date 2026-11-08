@@ -17,16 +17,16 @@ void Drawable::preparePlaceholder(RenderBuffer* buffer)
     style->value.visit(
         [](Empty) { },
         [&](Colour const&) {
-            placeholder = appendDrawRectPlaceholder(buffer, renderer.shaderIds.untextured, false);
+            placeholder = buffer->append_draw_rect_placeholder(renderer.shaderIds.untextured, false);
         },
         [&](DrawableStyle::Gradient const&) {
-            placeholder = appendDrawRectPlaceholder(buffer, renderer.shaderIds.untextured, false);
+            placeholder = buffer->append_draw_rect_placeholder(renderer.shaderIds.untextured, false);
         },
         [&](DrawableStyle::Ninepatch const& ninepatch) {
-            placeholder = appendDrawNinepatchPlaceholder(buffer, dynamic_cast<Ninepatch&>(*ninepatch.ref.metadata().loaded_asset).texture, renderer.shaderIds.textured);
+            placeholder = buffer->append_draw_ninepatch_placeholder(*ninepatch.ref.get().texture, renderer.shaderIds.textured);
         },
         [&](DrawableStyle::Sprite const&) {
-            placeholder = appendDrawRectPlaceholder(buffer, renderer.shaderIds.pixelArt, true);
+            placeholder = buffer->append_draw_rect_placeholder(renderer.shaderIds.pixelArt, true);
         });
 }
 

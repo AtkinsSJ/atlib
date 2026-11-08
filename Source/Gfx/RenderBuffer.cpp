@@ -393,7 +393,7 @@ DrawRingsGroup& RenderBuffer::begin_rings_group(s32 max_count)
     result->count = 0;
     result->maxCount = max_count;
 
-    result->firstSubGroup = beginRingsSubGroup(result);
+    result->firstSubGroup = result->begin_sub_group();
     result->currentSubGroup = &result->firstSubGroup;
 
     return *result;
