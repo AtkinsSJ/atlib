@@ -103,7 +103,7 @@ public:
     DrawRectsGroup begin_rects_group_untextured(size_t capacity, Optional<s8> shader_id = {});
     DrawRectsGroup begin_rects_group_for_text(BitmapFont const& font, size_t capacity, Optional<s8> shader_id = {});
 
-    DrawRingsGroup& begin_rings_group(s32 max_count);
+    DrawRingsGroup begin_rings_group(size_t capacity);
 
     // For when you want something to appear NOW in the render-order, but you don't know its details until later
     DrawRectPlaceholder append_draw_rect_placeholder(s8 shader_id, bool has_texture);

@@ -418,18 +418,10 @@ DrawRectsGroup RenderBuffer::begin_rects_group_for_text(BitmapFont const& font, 
     return begin_rects_group_internal(*font.texture(), capacity, shader_id.value_or(the_renderer().shaderIds.text));
 }
 
-DrawRingsGroup& RenderBuffer::begin_rings_group(s32 max_count)
+DrawRingsGroup RenderBuffer::begin_rings_group(size_t capacity)
 {
     // @Copypasta begin_rects_group_internal() - maybe factor out common "grouped render items" code?
     add_set_shader(the_renderer().shaderIds.untextured);
 
-    DrawRingsGroup* result = temp_arena().allocate<DrawRingsGroup>();
-    result->buffer = this;
-    result->count = 0;
-    result->maxCount = max_count;
-
-    result->firstSubGroup = result->begin_sub_group();
-    result->currentSubGroup = &result->firstSubGroup;
-
-    return *result;
+    return DrawRingsGroup { *this, capacity };
 }
