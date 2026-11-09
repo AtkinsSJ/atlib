@@ -406,7 +406,7 @@ void drawText(RenderBuffer* renderBuffer, BitmapFont* font, StringView text, Rec
     // s32 glyphsToOutput = countGlyphs(text.chars, text.length);
     s32 glyphsToOutput = text.length();
 
-    auto& group = renderBuffer->begin_rects_group_for_text(*font, glyphsToOutput, shaderID);
+    auto group = renderBuffer->begin_rects_group_for_text(*font, glyphsToOutput, shaderID);
 
     s32 currentX = 0;
     s32 currentY = 0;
@@ -557,7 +557,7 @@ void drawText(RenderBuffer* renderBuffer, BitmapFont* font, StringView text, Rec
         caretInfoResult->caretPosition = bounds.position() + v2i(currentX, currentY);
     }
 
-    ASSERT(glyphCount == group.count);
+    ASSERT(glyphCount == group.count());
     group.end();
 }
 

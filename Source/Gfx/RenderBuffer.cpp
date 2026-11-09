@@ -212,7 +212,7 @@ void RenderBuffer::draw_single_rect(Rect2 bounds, s8 shader_id, Colour colour00,
 
 void RenderBuffer::draw_ninepatch(Rect2I bounds, s8 shader_id, Ninepatch const& ninepatch, Colour colour)
 {
-    auto& group = begin_rects_group_textured(*ninepatch.texture, 9, shader_id);
+    auto group = begin_rects_group_textured(*ninepatch.texture, 9, shader_id);
 
     // NB: See comments in the Ninepatch struct for how we could avoid doing the  UV calculations repeatedly,
     // and why we haven't done so.
@@ -297,9 +297,9 @@ DrawRectPlaceholder RenderBuffer::append_draw_rect_placeholder(s8 shader_id, boo
 
 DrawNinepatchPlaceholder RenderBuffer::append_draw_ninepatch_placeholder(AssetMetadata& texture, s8 shader_id)
 {
-    auto& rectsGroup = begin_rects_group_textured(texture, 9, shader_id);
-    DrawNinepatchPlaceholder placeholder { rectsGroup.reserve(9) };
-    rectsGroup.end();
+    auto rects_group = begin_rects_group_textured(texture, 9, shader_id);
+    DrawNinepatchPlaceholder placeholder { rects_group.reserve(9) };
+    rects_group.end();
 
     return placeholder;
 }
@@ -393,40 +393,29 @@ u8* RenderBuffer::append_render_item_internal(RenderItemType type, smm size, smm
     return result;
 }
 
-DrawRectsGroup& RenderBuffer::begin_rects_group_internal(Optional<AssetMetadata&> texture, s32 max_count, s8 shader_id)
+DrawRectsGroup RenderBuffer::begin_rects_group_internal(Optional<AssetMetadata&> texture, size_t max_count, s8 shader_id)
 {
     add_set_shader(shader_id);
     if (texture.has_value())
         add_set_texture(texture.value());
 
-    DrawRectsGroup* result = temp_arena().allocate<DrawRectsGroup>();
-    result->buffer = this;
-    result->count = 0;
-    result->maxCount = max_count;
-    if (texture.has_value())
-        result->texture = &texture.value();
-    else
-        result->texture = nullptr;
-
-    result->firstSubGroup = result->begin_sub_group();
-    result->currentSubGroup = &result->firstSubGroup;
-
-    return *result;
+    auto* texture_pointer = texture.has_value() ? &texture.value() : nullptr;
+    return DrawRectsGroup { *this, texture_pointer, max_count };
 }
 
-DrawRectsGroup& RenderBuffer::begin_rects_group_textured(AssetMetadata& texture, s32 max_count, Optional<s8> shader_id)
+DrawRectsGroup RenderBuffer::begin_rects_group_textured(AssetMetadata& texture, size_t capacity, Optional<s8> shader_id)
 {
-    return begin_rects_group_internal(texture, max_count, shader_id.value_or(the_renderer().shaderIds.textured));
+    return begin_rects_group_internal(texture, capacity, shader_id.value_or(the_renderer().shaderIds.textured));
 }
 
-DrawRectsGroup& RenderBuffer::begin_rects_group_untextured(s32 max_count, Optional<s8> shader_id)
+DrawRectsGroup RenderBuffer::begin_rects_group_untextured(size_t capacity, Optional<s8> shader_id)
 {
-    return begin_rects_group_internal({}, max_count, shader_id.value_or(the_renderer().shaderIds.untextured));
+    return begin_rects_group_internal({}, capacity, shader_id.value_or(the_renderer().shaderIds.untextured));
 }
 
-DrawRectsGroup& RenderBuffer::begin_rects_group_for_text(BitmapFont const& font, s32 max_count, Optional<s8> shader_id)
+DrawRectsGroup RenderBuffer::begin_rects_group_for_text(BitmapFont const& font, size_t capacity, Optional<s8> shader_id)
 {
-    return begin_rects_group_internal(*font.texture(), max_count, shader_id.value_or(the_renderer().shaderIds.text));
+    return begin_rects_group_internal(*font.texture(), capacity, shader_id.value_or(the_renderer().shaderIds.text));
 }
 
 DrawRingsGroup& RenderBuffer::begin_rings_group(s32 max_count)

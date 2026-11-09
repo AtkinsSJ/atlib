@@ -11,38 +11,48 @@
 #include <Gfx/RenderBuffer.h>
 #include <Gfx/Sprite.h>
 
+DrawRectsGroup::DrawRectsGroup(RenderBuffer& buffer, AssetMetadata* texture, size_t capacity)
+    : m_buffer(buffer)
+    , m_count(0)
+    , m_capacity(capacity)
+    , m_texture(texture)
+{
+    m_first_sub_group = begin_sub_group();
+    m_current_sub_group = &m_first_sub_group;
+}
+
 Span<RenderItem_DrawRects_Item> DrawRectsGroup::reserve(size_t reserve_count)
 {
-    ASSERT((currentSubGroup->header->count + reserve_count) <= currentSubGroup->maxCount);
+    ASSERT((m_current_sub_group->header->count + reserve_count) <= m_current_sub_group->capacity);
 
-    RenderItem_DrawRects_Item* result = currentSubGroup->first + currentSubGroup->header->count;
+    RenderItem_DrawRects_Item* result = m_current_sub_group->first + m_current_sub_group->header->count;
 
-    currentSubGroup->header->count = static_cast<u8>(currentSubGroup->header->count + reserve_count);
-    count += reserve_count;
+    m_current_sub_group->header->count = static_cast<u8>(m_current_sub_group->header->count + reserve_count);
+    m_count += reserve_count;
 
     return Span { reserve_count, result };
 }
 
 void DrawRectsGroup::add_rect(Rect2 bounds, Colour color, Rect2 uv)
 {
-    ASSERT(count < maxCount);
+    ASSERT(m_count < m_capacity);
 
-    if (currentSubGroup->header->count == currentSubGroup->maxCount) {
+    if (m_current_sub_group->header->count == m_current_sub_group->capacity) {
         end_current_sub_group();
-        DrawRectsSubGroup* prevSubGroup = currentSubGroup;
-        currentSubGroup = temp_arena().allocate<DrawRectsSubGroup>();
-        *currentSubGroup = begin_sub_group();
-        prevSubGroup->next = currentSubGroup;
-        currentSubGroup->prev = prevSubGroup;
+        SubGroup* prevSubGroup = m_current_sub_group;
+        m_current_sub_group = temp_arena().allocate<SubGroup>();
+        *m_current_sub_group = begin_sub_group();
+        prevSubGroup->next = m_current_sub_group;
+        m_current_sub_group->prev = prevSubGroup;
     }
-    ASSERT(currentSubGroup->header->count < currentSubGroup->maxCount);
+    ASSERT(m_current_sub_group->header->count < m_current_sub_group->capacity);
 
-    RenderItem_DrawRects_Item* item = currentSubGroup->first + currentSubGroup->header->count++;
+    RenderItem_DrawRects_Item* item = m_current_sub_group->first + m_current_sub_group->header->count++;
     item->bounds = bounds;
     item->color = color;
     item->uv = uv;
 
-    count++;
+    m_count++;
 }
 
 void DrawRectsGroup::add_glyph_rect(BitmapFontGlyph const& glyph, V2 position, Colour color)
@@ -53,7 +63,7 @@ void DrawRectsGroup::add_glyph_rect(BitmapFontGlyph const& glyph, V2 position, C
 
 void DrawRectsGroup::add_sprite_rect(Sprite const& sprite, Rect2 bounds, Colour color)
 {
-    ASSERT(texture == sprite.texture);
+    ASSERT(m_texture == sprite.texture);
 
     add_rect(bounds, color, sprite.uv);
 }
@@ -67,15 +77,15 @@ void DrawRectsGroup::offset_range(s32 startIndex, s32 endIndexInclusive, float o
 {
     DEBUG_FUNCTION_T(DebugCodeDataTag::Renderer);
 
-    ASSERT(startIndex >= 0 && startIndex < count);
-    ASSERT(endIndexInclusive >= 0 && endIndexInclusive < count);
+    ASSERT(startIndex >= 0 && startIndex < m_count);
+    ASSERT(endIndexInclusive >= 0 && endIndexInclusive < m_count);
     ASSERT(startIndex <= endIndexInclusive);
 
     V2 offset { offsetX, offsetY };
 
     s32 debugItemsUpdated = 0;
 
-    DrawRectsSubGroup* subGroup = &firstSubGroup;
+    SubGroup* subGroup = &m_first_sub_group;
     s32 firstIndexInSubGroup = 0;
     // Find the first subgroup that's involved
     while (firstIndexInSubGroup + subGroup->header->count < startIndex) {
@@ -103,19 +113,19 @@ void DrawRectsGroup::offset_range(s32 startIndex, s32 endIndexInclusive, float o
     ASSERT(debugItemsUpdated == (endIndexInclusive - startIndex) + 1);
 }
 
-DrawRectsSubGroup DrawRectsGroup::begin_sub_group()
+DrawRectsGroup::SubGroup DrawRectsGroup::begin_sub_group()
 {
-    DrawRectsSubGroup result = {};
+    SubGroup result = {};
 
-    s32 sub_group_item_count = min(maxCount - count, (s32)maxRenderItemsPerGroup);
+    s32 sub_group_item_count = min(m_capacity - m_count, (s32)maxRenderItemsPerGroup);
     ASSERT(sub_group_item_count > 0 && sub_group_item_count <= maxRenderItemsPerGroup);
 
     size_t reserved_size = sizeof(RenderItem_DrawRects_Item) * sub_group_item_count;
-    auto [item, data] = buffer->append_render_item_with_reserved_data<RenderItem_DrawRects>(RenderItemType::DrawRects, reserved_size);
+    auto [item, data] = m_buffer.append_render_item_with_reserved_data<RenderItem_DrawRects>(RenderItemType::DrawRects, reserved_size);
 
     result.header = item;
     result.first = reinterpret_cast<RenderItem_DrawRects_Item*>(data.raw_data());
-    result.maxCount = sub_group_item_count;
+    result.capacity = sub_group_item_count;
 
     *result.header = {};
     result.header->count = 0;
@@ -125,7 +135,7 @@ DrawRectsSubGroup DrawRectsGroup::begin_sub_group()
 
 void DrawRectsGroup::end_current_sub_group()
 {
-    buffer->consume_reserved_memory(currentSubGroup->header->count * sizeof(RenderItem_DrawRects_Item));
+    m_buffer.consume_reserved_memory(m_current_sub_group->header->count * sizeof(RenderItem_DrawRects_Item));
 }
 
 void DrawRectsGroup::end()

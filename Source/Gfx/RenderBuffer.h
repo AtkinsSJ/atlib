@@ -99,9 +99,9 @@ public:
     void draw_ninepatch(Rect2I bounds, s8 shader_id, Ninepatch const&, Colour = Colour::white());
     void draw_grid(Rect2 bounds, Array2<u8> const& grid, ReadonlySpan<Colour> palette);
 
-    DrawRectsGroup& begin_rects_group_textured(AssetMetadata& texture, s32 max_count, Optional<s8> shader_id = {});
-    DrawRectsGroup& begin_rects_group_untextured(s32 max_count, Optional<s8> shader_id = {});
-    DrawRectsGroup& begin_rects_group_for_text(BitmapFont const& font, s32 max_count, Optional<s8> shader_id = {});
+    DrawRectsGroup begin_rects_group_textured(AssetMetadata& texture, size_t capacity, Optional<s8> shader_id = {});
+    DrawRectsGroup begin_rects_group_untextured(size_t capacity, Optional<s8> shader_id = {});
+    DrawRectsGroup begin_rects_group_for_text(BitmapFont const& font, size_t capacity, Optional<s8> shader_id = {});
 
     DrawRingsGroup& begin_rings_group(s32 max_count);
 
@@ -161,7 +161,7 @@ private:
     u8* append_render_item_internal(RenderItemType type, smm size, smm reserved_size);
 
     // NB: The Rects drawn must all have the same Texture!
-    DrawRectsGroup& begin_rects_group_internal(Optional<AssetMetadata&> texture, s32 max_count, s8 shader_id);
+    DrawRectsGroup begin_rects_group_internal(Optional<AssetMetadata&> texture, size_t max_count, s8 shader_id);
 
     String m_name;
 

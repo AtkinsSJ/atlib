@@ -255,15 +255,15 @@ void renderDebugData(DebugState* debugState)
         Colour barColor = Colour::from_rgb_255(255, 0, 0, 128);
         Colour activeBarColor = Colour::from_rgb_255(255, 255, 0, 128);
         u32 barIndex = 0;
-        auto& rectsGroup = renderBuffer->begin_rects_group_untextured(DEBUG_FRAMES_COUNT);
+        auto rects_group = renderBuffer->begin_rects_group_untextured(DEBUG_FRAMES_COUNT);
         for (u32 fi = debugState->writingFrameIndex + 1;
             fi != debugState->writingFrameIndex;
             fi = wrap<u32>(fi + 1, DEBUG_FRAMES_COUNT)) {
             u64 frameCycles = debugState->frameEndCycle[fi] - debugState->frameStartCycle[fi];
             float barHeight = barHeightPerCycle * (float)frameCycles;
-            rectsGroup.add_untextured_rect(Rect2 { barWidth * barIndex++, ui_camera.screen_rect().height() - barHeight, barWidth, barHeight }, fi == rfi ? activeBarColor : barColor);
+            rects_group.add_untextured_rect(Rect2 { barWidth * barIndex++, ui_camera.screen_rect().height() - barHeight, barWidth, barHeight }, fi == rfi ? activeBarColor : barColor);
         }
-        rectsGroup.end();
+        rects_group.end();
     }
 
     DebugTextPrinter textState { the_renderer(), font, Colour::white(), 16, false, HAlign::Left };

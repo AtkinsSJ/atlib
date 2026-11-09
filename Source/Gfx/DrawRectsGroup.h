@@ -8,17 +8,12 @@
 
 #include <Gfx/RenderItem.h>
 
-struct DrawRectsSubGroup {
-    RenderItem_DrawRects* header;
-    RenderItem_DrawRects_Item* first;
-    s32 maxCount;
+class DrawRectsGroup {
+public:
+    DrawRectsGroup(RenderBuffer&, AssetMetadata* texture, size_t capacity);
 
-    DrawRectsSubGroup* prev;
-    DrawRectsSubGroup* next;
-};
-
-// Think of this like a "handle". It has data inside but you shouldn't touch it from user code!
-struct DrawRectsGroup {
+    size_t count() const { return m_count; }
+    size_t capacity() const { return m_capacity; }
 
     // Makes space for `count` rects, and returns a pointer to the first one, so you can modify them later.
     // Guarantees that they're contiguous, but that means that there must be room for `count` items in the
@@ -32,18 +27,28 @@ struct DrawRectsGroup {
     void add_untextured_rect(Rect2 bounds, Colour color);
     void offset_range(s32 startIndex, s32 endIndexInclusive, float offsetX, float offsetY);
 
-    DrawRectsSubGroup begin_sub_group();
-    void end_current_sub_group();
-
     void end();
 
-    RenderBuffer* buffer;
+private:
+    struct SubGroup {
+        RenderItem_DrawRects* header;
+        RenderItem_DrawRects_Item* first;
+        s32 capacity;
 
-    DrawRectsSubGroup firstSubGroup;
-    DrawRectsSubGroup* currentSubGroup;
+        SubGroup* prev;
+        SubGroup* next;
+    };
 
-    s32 count;
-    s32 maxCount;
+    SubGroup begin_sub_group();
+    void end_current_sub_group();
 
-    AssetMetadata* texture;
+    RenderBuffer& m_buffer;
+
+    SubGroup m_first_sub_group;
+    SubGroup* m_current_sub_group;
+
+    size_t m_count;
+    size_t m_capacity;
+
+    AssetMetadata* m_texture;
 };
