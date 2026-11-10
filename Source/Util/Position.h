@@ -13,6 +13,8 @@
 template<typename T>
 class Position {
 public:
+    Position() = default;
+
     Position(T x, T y)
         : m_x(x)
         , m_y(y)
