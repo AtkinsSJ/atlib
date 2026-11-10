@@ -11,6 +11,7 @@
 #include <Util/DeprecatedLinkedList.h>
 #include <Util/EnumMap.h>
 #include <Util/HashMap.h>
+#include <Util/MemoryArena.h>
 #include <Util/Pool.h>
 
 #define GLUE_(a, b) a##b

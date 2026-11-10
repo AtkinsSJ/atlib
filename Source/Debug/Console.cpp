@@ -256,7 +256,7 @@ void consoleHandleCommand(Console* console, StringView commandInput)
 
     if (!commandInput.is_empty()) {
         // Add to history
-        console->inputHistory.append(console->inputHistory.memoryArena->allocate_string(commandInput));
+        console->inputHistory.append(console->inputHistory.allocator->allocate_string(commandInput));
         console->inputHistoryCursor = -1;
 
         Lexer lexer { commandInput };
@@ -285,7 +285,7 @@ void consoleWriteLine(String text, ConsoleLineStyle style)
     if (globalConsole) {
         ConsoleOutputLine* line = globalConsole->outputLines.appendBlank();
         line->style = style;
-        line->text = globalConsole->outputLines.memoryArena->allocate_string(text);
+        line->text = globalConsole->outputLines.allocator->allocate_string(text);
     }
 }
 

@@ -5,12 +5,14 @@
  */
 
 #include "BitArray.h"
+
+#include <Util/Allocator.h>
 #include <Util/Assert.h>
 #include <Util/MemoryArena.h>
 
-BitArray::BitArray(MemoryArena& arena, u32 size)
+BitArray::BitArray(Allocator& allocator, u32 size)
     : m_size(size)
-    , m_data(arena.allocate_filled_array<u64>(calculate_u64_count(size)))
+    , m_data(allocator.allocate_filled_array<u64>(calculate_u64_count(size)))
 {
 }
 

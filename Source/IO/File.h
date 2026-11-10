@@ -12,7 +12,6 @@
 #include <Util/Flags.h>
 #include <Util/Log.h>
 #include <Util/Memory.h>
-#include <Util/MemoryArena.h>
 #include <Util/String.h>
 
 struct FileHandle {

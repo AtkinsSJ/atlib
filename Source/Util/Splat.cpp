@@ -5,11 +5,12 @@
  */
 
 #include "Splat.h"
+
 #include <Util/Random.h>
 
-Splat Splat::create_random(s32 centreX, s32 centreY, float min_radius, float max_radius, s32 resolution, Random& random, s32 smoothness, MemoryArena* memoryArena)
+Splat Splat::create_random(s32 centreX, s32 centreY, float min_radius, float max_radius, s32 resolution, Random& random, s32 smoothness, Allocator* allocator)
 {
-    auto radius = memoryArena->allocate_filled_array<float>(resolution);
+    auto radius = allocator->allocate_filled_array<float>(resolution);
     random.fill_with_noise(radius, smoothness, true);
 
     return Splat { v2i(centreX, centreY), min_radius, max_radius, move(radius), resolution / 360.0f };

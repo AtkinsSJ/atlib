@@ -41,7 +41,7 @@ struct WriteBufferRange {
 };
 
 struct WriteBuffer {
-    MemoryArena* arena;
+    Allocator* arena;
     s32 chunkSize;
 
     s32 byteCount;
@@ -51,7 +51,7 @@ struct WriteBuffer {
 
     // Methods
 
-    void init(s32 chunkSize = 4_KB, MemoryArena* arena = &temp_arena());
+    void init(s32 chunkSize = 4_KB, Allocator* = &temp_arena());
 
     template<typename T>
     WriteBufferRange append(T const* thing)

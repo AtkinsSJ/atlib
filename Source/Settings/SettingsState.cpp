@@ -10,8 +10,8 @@
 #include <Settings/Settings.h>
 #include <Util/StringBuilder.h>
 
-SettingsState::SettingsState(MemoryArena& arena)
-    : m_settings_order(arena, 32)
+SettingsState::SettingsState(Allocator& allocator)
+    : m_settings_order(allocator, 32)
 {
 }
 

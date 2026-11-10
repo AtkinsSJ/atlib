@@ -28,13 +28,13 @@ struct OccupancyArrayIterator;
 template<typename T>
 struct OccupancyArray {
     OccupancyArray() = default; // FIXME: Temporary
-    OccupancyArray(MemoryArena& arena, s32 itemsPerChunk)
-        : memoryArena(&arena)
+    OccupancyArray(Allocator& allocator, s32 itemsPerChunk)
+        : allocator(&allocator)
         , itemsPerChunk(itemsPerChunk)
     {
     }
 
-    MemoryArena* memoryArena;
+    Allocator* allocator;
 
     s32 itemsPerChunk;
     s32 chunkCount { 0 };
@@ -55,7 +55,7 @@ struct OccupancyArray {
             size_t occupancyArrayCount = BitArray::calculate_u64_count(itemsPerChunk);
             smm occupancyArraySize = occupancyArrayCount * sizeof(u64);
 
-            auto [new_chunk, items] = memoryArena->allocate_with_data<OccupancyArrayChunk<T>>(arraySize + occupancyArraySize);
+            auto [new_chunk, items] = allocator->allocate_with_data<OccupancyArrayChunk<T>>(arraySize + occupancyArraySize);
             new_chunk.items = reinterpret_cast<T*>(items.raw_data());
             new_chunk.occupancy = BitArray::from_memory(itemsPerChunk, { occupancyArrayCount, reinterpret_cast<u64*>(items.raw_data() + arraySize), occupancyArrayCount });
 

@@ -10,9 +10,6 @@
 #include <Assets/Forward.h>
 #include <Gfx/Camera.h>
 #include <Gfx/Colour.h>
-#include <Gfx/DrawRectsGroup.h>
-#include <Gfx/DrawRingsGroup.h>
-#include <Gfx/Forward.h>
 #include <Gfx/RenderBuffer.h>
 #include <Gfx/WindowResizeListener.h>
 #include <SDL2/SDL_events.h>
@@ -21,7 +18,6 @@
 #include <Util/ChunkedArray.h>
 #include <Util/MemoryArena.h>
 #include <Util/Pool.h>
-#include <Util/Rectangle.h>
 #include <Util/String.h>
 #include <Util/Vector.h>
 

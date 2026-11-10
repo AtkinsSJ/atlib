@@ -6,12 +6,12 @@
 
 #pragma once
 
+#include <Util/Allocator.h>
 #include <Util/Basic.h>
 #include <Util/Deferred.h>
 #include <Util/DeprecatedPool.h>
 #include <Util/Indexed.h>
 #include <Util/Log.h>
-#include <Util/MemoryArena.h>
 
 /**
  * Variation on Array where we allocate the data in chunks, which are linked-listed together.
@@ -29,9 +29,9 @@ struct ArrayChunk : PoolItem {
 };
 
 template<typename T>
-ArrayChunk<T>* allocateChunk(MemoryArena* arena, s32 itemsPerChunk)
+ArrayChunk<T>* allocateChunk(Allocator* allocator, s32 itemsPerChunk)
 {
-    auto [chunk, items] = arena->allocate_with_data<ArrayChunk<T>, T>(itemsPerChunk);
+    auto [chunk, items] = allocator->allocate_with_data<ArrayChunk<T>, T>(itemsPerChunk);
     chunk.count = 0;
     chunk.items = items.raw_data();
 
@@ -41,15 +41,15 @@ ArrayChunk<T>* allocateChunk(MemoryArena* arena, s32 itemsPerChunk)
 template<typename T>
 struct ArrayChunkPool : DeprecatedPool<ArrayChunk<T>> {
     ArrayChunkPool() = default;
-    explicit ArrayChunkPool(MemoryArena& arena, s32 items_per_chunk)
-        : DeprecatedPool<ArrayChunk<T>>(arena, allocate_chunk, &itemsPerChunk)
+    explicit ArrayChunkPool(Allocator& allocator, s32 items_per_chunk)
+        : DeprecatedPool<ArrayChunk<T>>(allocator, allocate_chunk, &itemsPerChunk)
         , itemsPerChunk(items_per_chunk)
     {
     }
 
-    static ArrayChunk<T>* allocate_chunk(MemoryArena* arena, void* user_data)
+    static ArrayChunk<T>* allocate_chunk(Allocator* allocator, void* user_data)
     {
-        return allocateChunk<T>(arena, *static_cast<s32*>(user_data));
+        return allocateChunk<T>(allocator, *static_cast<s32*>(user_data));
     }
 
     s32 itemsPerChunk;
@@ -63,9 +63,9 @@ struct ChunkedArray {
     // FIXME: Temporary until initialization is sane everywhere.
     ChunkedArray() = default;
 
-    ChunkedArray(MemoryArena& arena, s32 items_per_chunk)
+    ChunkedArray(Allocator& allocator, s32 items_per_chunk)
         : chunkPool(nullptr)
-        , memoryArena(&arena)
+        , allocator(&allocator)
         , itemsPerChunk(items_per_chunk)
         , chunkCount(0)
         , count(0)
@@ -77,7 +77,7 @@ struct ChunkedArray {
 
     explicit ChunkedArray(ArrayChunkPool<T>& pool)
         : chunkPool(&pool)
-        , memoryArena(nullptr)
+        , allocator(nullptr)
         , itemsPerChunk(pool.itemsPerChunk)
         , chunkCount(0)
         , count(0)
@@ -87,7 +87,7 @@ struct ChunkedArray {
     }
 
     ArrayChunkPool<T>* chunkPool;
-    MemoryArena* memoryArena;
+    Allocator* allocator;
 
     s32 itemsPerChunk;
     s32 chunkCount;
@@ -433,7 +433,7 @@ struct ChunkedArray {
         if (chunkPool != nullptr) {
             newChunk = getItemFromPool(chunkPool);
         } else {
-            newChunk = allocateChunk<T>(memoryArena, itemsPerChunk);
+            newChunk = allocateChunk<T>(allocator, itemsPerChunk);
         }
         newChunk->prevChunk = lastChunk;
         newChunk->nextChunk = nullptr;

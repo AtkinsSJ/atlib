@@ -13,7 +13,7 @@
 class BitArray {
 public:
     BitArray() = default;
-    BitArray(MemoryArena&, u32 size);
+    BitArray(Allocator&, u32 size);
     static BitArray from_memory(u32 size, Array<u64>);
 
     bool operator[](u32 index) const;

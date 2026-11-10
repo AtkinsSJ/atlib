@@ -9,7 +9,6 @@
 #include <IO/BinaryFile.h>
 #include <IO/File.h>
 #include <IO/WriteBuffer.h>
-#include <Util/MemoryArena.h>
 
 struct BinaryFileWriter {
     MemoryArena* arena;

@@ -18,7 +18,7 @@ struct RenderBufferChunk final : public Poolable<RenderBufferChunk> {
     RenderBufferChunk() = default;
 
     // Poolable
-    static RenderBufferChunk& allocate_from_pool(MemoryArena&);
+    static RenderBufferChunk& allocate_from_pool(Allocator&);
     void initialize_from_pool() { }
     virtual void clear_for_pool() override;
 
@@ -153,7 +153,7 @@ public:
     RenderBufferReader read() const;
 
     // Poolable
-    void initialize_from_pool(MemoryArena&, StringView source_name, Pool<RenderBufferChunk>*);
+    void initialize_from_pool(Allocator& allocator, StringView source_name, Pool<RenderBufferChunk>*);
     virtual void clear_for_pool() override;
 
 private:

@@ -6,11 +6,10 @@
 
 #include "WriteBuffer.h"
 #include <IO/File.h>
-#include <Util/MemoryArena.h>
 
-void WriteBuffer::init(s32 chunkSize_, MemoryArena* arena_)
+void WriteBuffer::init(s32 chunkSize_, Allocator* allocator)
 {
-    this->arena = arena_;
+    this->arena = allocator;
     this->chunkSize = chunkSize_;
     this->byteCount = 0;
     this->chunkCount = 0;

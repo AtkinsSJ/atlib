@@ -7,7 +7,6 @@
 #include "DrawRingsGroup.h"
 
 #include <Gfx/Renderer.h>
-#include <Util/MemoryArena.h>
 
 DrawRingsGroup::DrawRingsGroup(RenderBuffer& buffer, size_t capacity)
     : m_buffer(buffer)

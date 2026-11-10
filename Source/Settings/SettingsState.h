@@ -65,7 +65,7 @@ public:
     }
 
 protected:
-    explicit SettingsState(MemoryArena& arena);
+    explicit SettingsState(Allocator&);
     void register_setting(Setting&);
 
 private:

@@ -4,10 +4,11 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
+#include "MemoryArena.h"
+
 #include <Util/Log.h>
 #include <Util/Maths.h>
 #include <Util/Memory.h>
-#include <Util/MemoryArena.h>
 
 static MemoryArena s_temp_arena { "Temp"_s, 4_MB };
 

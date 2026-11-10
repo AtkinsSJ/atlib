@@ -14,7 +14,6 @@
 #include <UI/TextInput.h>
 #include <UI/UITheme.h>
 #include <Util/Maths.h>
-#include <Util/MemoryArena.h>
 #include <Util/Unicode.h>
 
 namespace UI {

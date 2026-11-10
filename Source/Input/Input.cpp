@@ -20,29 +20,29 @@ s32 keycodeToIndex(SDL_Keycode key)
     return key;
 }
 
-void init_input_state(MemoryArena& system_arena)
+void init_input_state(Allocator& allocator)
 {
     // Letters
     for (char c = 'A'; c <= 'Z'; c++) {
-        String key = system_arena.allocate_string(StringView { &c, 1 });
+        String key = allocator.allocate_string(StringView { &c, 1 });
         s_input_state.key_by_name.set(key, SDLK_a + (c - 'A'));
     }
 
     // Numbers
     for (char i = 0; i <= 9; i++) {
         char c = '0' + i;
-        String key = system_arena.allocate_string(StringView { &c, 1 });
+        String key = allocator.allocate_string(StringView { &c, 1 });
         s_input_state.key_by_name.set(key, SDLK_0 + i);
     }
 
     // F keys
     for (char i = 0; i <= 12; i++) {
-        String key = system_arena.allocate_string(myprintf("F{0}"_s, { formatInt(i + 1) }));
+        String key = allocator.allocate_string(myprintf("F{0}"_s, { formatInt(i + 1) }));
         s_input_state.key_by_name.set(key, SDLK_F1 + i);
     }
 
     // Misc
-    s_input_state.key_by_name.set(system_arena.allocate_string("Home"_sv), SDLK_HOME);
+    s_input_state.key_by_name.set(allocator.allocate_string("Home"_sv), SDLK_HOME);
 }
 
 InputState& input_state()

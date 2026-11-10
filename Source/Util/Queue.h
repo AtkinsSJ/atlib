@@ -6,11 +6,11 @@
 
 #pragma once
 
+#include <Util/Allocator.h>
 #include <Util/Basic.h>
 #include <Util/DeprecatedPool.h>
 #include <Util/Forward.h>
 #include <Util/Indexed.h>
-#include <Util/MemoryArena.h>
 
 //
 // Queue! Your standard FIFO data structure
@@ -44,11 +44,11 @@ public:
     // FIXME: Temporary until initialization is more sane everywhere.
     Queue() = default;
 
-    explicit Queue(MemoryArena& arena, s32 chunk_size = 32)
-        : m_chunk_pool(arena, [](MemoryArena* arena, void* userData) {
+    explicit Queue(Allocator& allocator, s32 chunk_size = 32)
+        : m_chunk_pool(allocator, [](Allocator* allocator, void* userData) {
                     s32 chunk_size = *static_cast<s32*>(userData);
 
-                    auto [new_chunk, items] = arena->allocate_with_data<QueueChunk<T>, T>(chunk_size);
+                    auto [new_chunk, items] = allocator->allocate_with_data<QueueChunk<T>, T>(chunk_size);
                     new_chunk.items = items.raw_data();
                     return &new_chunk; }, &m_chunk_size)
         , m_chunk_size(chunk_size)

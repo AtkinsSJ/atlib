@@ -13,9 +13,9 @@
 #include <Gfx/Renderer.h>
 #include <Gfx/Sprite.h>
 
-RenderBufferChunk& RenderBufferChunk::allocate_from_pool(MemoryArena& arena)
+RenderBufferChunk& RenderBufferChunk::allocate_from_pool(Allocator& allocator)
 {
-    auto [chunk, data] = arena.allocate_with_data<RenderBufferChunk>(DEFAULT_SIZE);
+    auto [chunk, data] = allocator.allocate_with_data<RenderBufferChunk>(DEFAULT_SIZE);
     chunk.size = DEFAULT_SIZE;
     chunk.used = 0;
     chunk.memory = data.raw_data();
@@ -316,9 +316,9 @@ RenderBufferReader RenderBuffer::read() const
     return RenderBufferReader { {}, m_first_chunk };
 }
 
-void RenderBuffer::initialize_from_pool(MemoryArena& arena, StringView source_name, Pool<RenderBufferChunk>* chunk_pool)
+void RenderBuffer::initialize_from_pool(Allocator& allocator, StringView source_name, Pool<RenderBufferChunk>* chunk_pool)
 {
-    this->m_name = arena.allocate_string(source_name);
+    this->m_name = allocator.allocate_string(source_name);
     this->m_name.hash();
 
     this->m_has_range_reserved = false;

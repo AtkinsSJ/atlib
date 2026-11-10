@@ -9,7 +9,6 @@
 #include <IO/BinaryFile.h>
 #include <IO/File.h>
 #include <Util/Flags.h>
-#include <Util/MemoryArena.h>
 
 // TODO: @Size Maybe we keep a buffer the size of the largest section in the
 // file, to reduce how much memory we have to allocate. Though, that assumes

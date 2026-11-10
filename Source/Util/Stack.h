@@ -24,8 +24,8 @@ template<typename T>
 class Stack {
 public:
     Stack() = default; // FIXME: Temporary
-    explicit Stack(MemoryArena& arena, s32 items_per_chunk = 32)
-        : m_array(arena, items_per_chunk)
+    explicit Stack(Allocator& allocator, s32 items_per_chunk = 32)
+        : m_array(allocator, items_per_chunk)
     {
     }
 
