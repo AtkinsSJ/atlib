@@ -133,9 +133,17 @@ void Renderer::render_internal()
     DEBUG_FUNCTION_T(DebugCodeDataTag::Renderer);
 
     ShaderProgram* activeShader = nullptr;
-    Matrix4 projection_matrix = Matrix4::identity();
 
     for (auto const* buffer : m_render_buffers) {
+        Stack<Matrix4> projection_matrices { temp_arena() };
+        projection_matrices.push(Matrix4::identity());
+
+        auto set_shader_matrix = [&] {
+            if (activeShader) {
+                glUniformMatrix4fv(activeShader->uProjectionMatrixLoc, 1, false, projection_matrices.peek()->flat());
+            }
+        };
+
         auto reader = buffer->read();
 
         DEBUG_BEGIN_RENDER_BUFFER(buffer->name(), buffer->name());
@@ -153,16 +161,42 @@ void Renderer::render_internal()
             case RenderItemType::SetProjectionMatrix: {
                 DEBUG_BLOCK_T("render: RenderItemType::SetProjectionMatrix", DebugCodeDataTag::Renderer);
                 auto& header = reader.read<RenderItem_SetProjectionMatrix>();
-                projection_matrix = header.matrix;
+
+                if (m_vertex_count > 0)
+                    flush_vertices();
+
+                projection_matrices.push(header.matrix);
+                set_shader_matrix();
+            } break;
+
+            case RenderItemType::PushMultipliedMatrix: {
+                DEBUG_BLOCK_T("render: RenderItemType::PushMultipliedMatrix", DebugCodeDataTag::Renderer);
+                auto& header = reader.read<RenderItem_PushMultipliedMatrix>();
+
+                if (m_vertex_count > 0)
+                    flush_vertices();
+
+                projection_matrices.push(*projection_matrices.peek() * header.matrix);
+                set_shader_matrix();
+            } break;
+
+            case RenderItemType::PopMultipliedMatrix: {
+                DEBUG_BLOCK_T("render: RenderItemType::PopMultipliedMatrix", DebugCodeDataTag::Renderer);
+                [[maybe_unused]] auto& header = reader.read<RenderItem_PopMultipliedMatrix>();
+
+                if (m_vertex_count > 0)
+                    flush_vertices();
+
+                (void)projection_matrices.pop();
+                set_shader_matrix();
             } break;
 
             case RenderItemType::SetPalette: {
                 DEBUG_BLOCK_T("render: RenderItemType::SetPalette", DebugCodeDataTag::Renderer);
                 auto& header = reader.read<RenderItem_SetPalette>();
 
-                if (m_vertex_count > 0) {
+                if (m_vertex_count > 0)
                     flush_vertices();
-                }
 
                 // A palette is a 1D texture
                 glActiveTexture(GL_TEXTURE0 + 1);
@@ -189,21 +223,19 @@ void Renderer::render_internal()
                 DEBUG_BLOCK_T("render: RenderItemType::SetShader", DebugCodeDataTag::Renderer);
                 auto& header = reader.read<RenderItem_SetShader>();
 
-                if (m_vertex_count > 0) {
+                if (m_vertex_count > 0)
                     flush_vertices();
-                }
 
                 activeShader = use_shader(header.shaderID);
-                glUniformMatrix4fv(activeShader->uProjectionMatrixLoc, 1, false, projection_matrix.flat());
+                set_shader_matrix();
             } break;
 
             case RenderItemType::SetTexture: {
                 DEBUG_BLOCK_T("render: RenderItemType::SetTexture", DebugCodeDataTag::Renderer);
                 auto& header = reader.read<RenderItem_SetTexture>();
 
-                if (m_vertex_count > 0) {
+                if (m_vertex_count > 0)
                     flush_vertices();
-                }
 
                 if (header.texture == nullptr) {
                     // Raw texture!
@@ -266,9 +298,8 @@ void Renderer::render_internal()
                 auto& header = reader.read<RenderItem_Clear>();
 
                 // NB: We MUST flush here, otherwise we could render some things after the clear instead of before it!
-                if (m_vertex_count > 0) {
+                if (m_vertex_count > 0)
                     flush_vertices();
-                }
 
                 glClearColor(header.clearColor.r(), header.clearColor.g(), header.clearColor.b(), header.clearColor.a());
                 glClear(GL_COLOR_BUFFER_BIT);
@@ -279,9 +310,8 @@ void Renderer::render_internal()
                 auto& header = reader.read<RenderItem_BeginScissor>();
 
                 // NB: We MUST flush here, otherwise we could render some things after the scissor instead of before it!
-                if (m_vertex_count > 0) {
+                if (m_vertex_count > 0)
                     flush_vertices();
-                }
 
                 if (m_scissor_stack.is_empty()) {
                     glEnable(GL_SCISSOR_TEST);
@@ -298,9 +328,8 @@ void Renderer::render_internal()
 
                 // NB: We MUST flush here, otherwise we could render some things after the scissor is removed!
                 // (This bug took me nearly half an hour to figure out.)
-                if (m_vertex_count > 0) {
+                if (m_vertex_count > 0)
                     flush_vertices();
-                }
 
                 (void)m_scissor_stack.pop();
 

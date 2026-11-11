@@ -19,6 +19,9 @@ enum class RenderItemType : u8 {
     NextMemoryChunk,
 
     SetProjectionMatrix,
+    PushMultipliedMatrix,
+    PopMultipliedMatrix,
+
     SetPalette,
     SetShader,
     SetTexture,
@@ -36,6 +39,11 @@ enum class RenderItemType : u8 {
 struct RenderItem_SetProjectionMatrix {
     Matrix4 matrix;
 };
+
+struct RenderItem_PushMultipliedMatrix {
+    Matrix4 matrix;
+};
+struct RenderItem_PopMultipliedMatrix { };
 
 struct RenderItem_SetPalette {
     s32 paletteSize;

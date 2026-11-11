@@ -90,6 +90,18 @@ void RenderBuffer::add_set_projection_matrix(Matrix4 const& matrix)
     auto& matrix_item = append_render_item<RenderItem_SetProjectionMatrix>(RenderItemType::SetProjectionMatrix);
     matrix_item.matrix = matrix;
 }
+
+void RenderBuffer::push_multiplied_matrix(Matrix4 const& matrix)
+{
+    auto& matrix_item = append_render_item<RenderItem_PushMultipliedMatrix>(RenderItemType::PushMultipliedMatrix);
+    matrix_item.matrix = matrix;
+}
+
+void RenderBuffer::pop_multiplied_matrix()
+{
+    append_render_item<RenderItem_PopMultipliedMatrix>(RenderItemType::PopMultipliedMatrix);
+}
+
 void RenderBuffer::add_set_shader(s8 shader_id)
 {
     if (m_current_shader != shader_id) {
@@ -103,6 +115,7 @@ void RenderBuffer::add_set_shader(s8 shader_id)
         m_current_texture = nullptr;
     }
 }
+
 void RenderBuffer::add_set_texture(AssetMetadata& texture)
 {
     ASSERT(texture.state == AssetMetadata::State::Loaded);

@@ -81,6 +81,9 @@ public:
     String const& name() const { return m_name; }
 
     void add_set_projection_matrix(Matrix4 const&);
+    void push_multiplied_matrix(Matrix4 const&);
+    void pop_multiplied_matrix();
+
     void add_set_shader(s8 shaderID);
     void add_clear(Colour clear_color = {});
 
