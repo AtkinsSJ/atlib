@@ -21,6 +21,7 @@ class Matrix4 {
 public:
     static Matrix4 identity();
     static Matrix4 orthographic(float left, float right, float top, float bottom, float near_clip, float far_clip);
+    static Matrix4 rotation_z(float radians);
 
     Matrix4 inverse() const;
 

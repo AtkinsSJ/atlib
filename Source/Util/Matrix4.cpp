@@ -33,6 +33,19 @@ Matrix4 Matrix4::orthographic(float left, float right, float top, float bottom, 
     return m;
 }
 
+Matrix4 Matrix4::rotation_z(float radians)
+{
+    Matrix4 rotation_matrix = identity();
+    float c = cos32(radians);
+    float s = sin32(radians);
+    rotation_matrix.at(0, 0) = c;
+    rotation_matrix.at(0, 1) = s;
+    rotation_matrix.at(1, 0) = -s;
+    rotation_matrix.at(1, 1) = c;
+
+    return rotation_matrix;
+}
+
 Matrix4 Matrix4::inverse() const
 {
     // Shamelessly copied from http://stackoverflow.com/a/1148405/1178345
@@ -98,15 +111,7 @@ void Matrix4::scale(V3 const& scale)
 
 void Matrix4::rotate_z(float radians)
 {
-    Matrix4 rotation = identity();
-    float c = cos32(radians);
-    float s = sin32(radians);
-    rotation.at(0, 0) = c;
-    rotation.at(0, 1) = s;
-    rotation.at(1, 0) = -s;
-    rotation.at(1, 1) = c;
-
-    *this *= rotation;
+    *this *= Matrix4::rotation_z(radians);
 }
 
 Matrix4 Matrix4::operator*(Matrix4 const& other) const
