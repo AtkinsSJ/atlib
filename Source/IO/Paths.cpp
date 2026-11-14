@@ -5,7 +5,7 @@
  */
 
 #include "Paths.h"
-#include <SDL_filesystem.h>
+#include <SDL3/SDL_filesystem.h>
 
 namespace Paths {
 

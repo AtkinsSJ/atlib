@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include <SDL2/SDL_assert.h>
+#include <SDL3/SDL_assert.h>
 
 #if BUILD_DEBUG
 #    define DEBUG_BREAK() SDL_TriggerBreakpoint()

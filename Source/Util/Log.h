@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include <SDL2/SDL_log.h>
+#include <SDL3/SDL_log.h>
 #include <Util/Forward.h>
 #include <initializer_list>
 

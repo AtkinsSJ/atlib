@@ -7,7 +7,7 @@
 #include "Input.h"
 #include <Debug/Debug.h>
 #include <Gfx/Renderer.h>
-#include <SDL2/SDL_clipboard.h>
+#include <SDL3/SDL_clipboard.h>
 
 static InputState s_input_state {};
 
@@ -25,7 +25,7 @@ void init_input_state(Allocator& allocator)
     // Letters
     for (char c = 'A'; c <= 'Z'; c++) {
         String key = allocator.allocate_string(StringView { &c, 1 });
-        s_input_state.key_by_name.set(key, SDLK_a + (c - 'A'));
+        s_input_state.key_by_name.set(key, SDLK_A + (c - 'A'));
     }
 
     // Numbers
@@ -75,34 +75,34 @@ void updateInput()
         SDL_PumpEvents();
     }
     SDL_Event event;
-    while (SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) > 0) {
+    while (SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_EVENT_FIRST, SDL_EVENT_LAST) > 0) {
         DEBUG_BLOCK_T("updateInput: Event", DebugCodeDataTag::Input);
 
         switch (event.type) {
         // WINDOW EVENTS
-        case SDL_QUIT: {
+        case SDL_EVENT_QUIT: {
             s_input_state.receivedQuitSignal = true;
         } break;
-        case SDL_WINDOWEVENT: {
+        case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED: {
             the_renderer().handle_window_event(event.window);
         } break;
 
         // MOUSE EVENTS
         // NB: If we later handle TOUCH events, then we need to discard mouse events where event.X.which = SDL_TOUCH_MOUSEID
-        case SDL_MOUSEMOTION: {
+        case SDL_EVENT_MOUSE_MOTION: {
             // Mouse pos in screen coordinates
             s_input_state.mousePosRaw.x = event.motion.x;
             s_input_state.mousePosRaw.y = event.motion.y;
         } break;
-        case SDL_MOUSEBUTTONDOWN: {
+        case SDL_EVENT_MOUSE_BUTTON_DOWN: {
             u8 buttonIndex = event.button.button;
             s_input_state.mouseDown[buttonIndex] = true;
         } break;
-        case SDL_MOUSEBUTTONUP: {
+        case SDL_EVENT_MOUSE_BUTTON_UP: {
             u8 buttonIndex = event.button.button;
             s_input_state.mouseDown[buttonIndex] = false;
         } break;
-        case SDL_MOUSEWHEEL: {
+        case SDL_EVENT_MOUSE_WHEEL: {
             if (event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED) {
                 s_input_state.wheelX = -event.wheel.x;
                 s_input_state.wheelY = -event.wheel.y;
@@ -113,8 +113,8 @@ void updateInput()
         } break;
 
         // KEYBOARD EVENTS
-        case SDL_KEYDOWN: {
-            s32 keycode = keycodeToIndex(event.key.keysym.sym);
+        case SDL_EVENT_KEY_DOWN: {
+            s32 keycode = keycodeToIndex(event.key.key);
             s_input_state._keyDown[keycode] = true;
             s_input_state._keyDownIsRepeat[keycode] = (event.key.repeat > 0);
             if (event.key.repeat) {
@@ -126,15 +126,18 @@ void updateInput()
                 s_input_state._keyWasDown[keycode] = false;
             }
         } break;
-        case SDL_KEYUP: {
-            s32 keycode = keycodeToIndex(event.key.keysym.sym);
+        case SDL_EVENT_KEY_UP: {
+            s32 keycode = keycodeToIndex(event.key.key);
             s_input_state._keyDown[keycode] = false;
             s_input_state._keyDownIsRepeat[keycode] = false;
         } break;
-        case SDL_TEXTINPUT: {
+        case SDL_EVENT_TEXT_INPUT: {
             s_input_state.hasUnhandledTextEntered = true;
             s_input_state.textEntered.append(StringView::from_c_string(event.text.text));
         } break;
+
+        default:
+            break;
         }
     }
 

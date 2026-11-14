@@ -7,7 +7,7 @@
 #pragma once
 
 #include <Debug/Debug.h>
-#include <SDL2/SDL_rwops.h>
+#include <SDL3/SDL_iostream.h>
 #include <Util/Basic.h>
 #include <Util/Flags.h>
 #include <Util/Log.h>
@@ -17,7 +17,7 @@
 struct FileHandle {
     String path;
     bool isOpen;
-    SDL_RWops* sdl_file;
+    SDL_IOStream* sdl_file;
 };
 
 struct File {

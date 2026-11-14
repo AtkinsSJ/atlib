@@ -72,8 +72,8 @@ void initConsole(MemoryArena* debugArena, float openHeight, float maximisedHeigh
     console->register_default_commands();
 
     globalConsole = console;
-    SDL_LogGetOutputFunction(&default_logger, &default_logger_user_data);
-    SDL_LogSetOutputFunction(&console_log_output_function, nullptr);
+    SDL_GetLogOutputFunction(&default_logger, &default_logger_user_data);
+    SDL_SetLogOutputFunction(&console_log_output_function, nullptr);
 }
 
 void updateAndRenderConsole(Console* console)
@@ -97,7 +97,7 @@ void updateAndRenderConsole(Console* console)
 
     if (!isInputCaptured() || hasCapturedInput(&console->input)) {
         // Show/hide the console
-        if (keyJustPressed(SDLK_BACKQUOTE)) {
+        if (keyJustPressed(SDLK_GRAVE)) {
             if (modifierKeyIsPressed(ModifierKey::Ctrl)) {
                 if (console->targetHeight == console->maximisedHeight) {
                     console->targetHeight = console->openHeight;

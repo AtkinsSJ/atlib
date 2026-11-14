@@ -22,9 +22,9 @@ target_include_directories(Gfx PUBLIC "..")
 
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
-find_package(SDL2 REQUIRED)
-find_package(SDL2_image REQUIRED)
-target_include_directories(Gfx PRIVATE ${OPENGL_INCLUDE_DIRS} ${GLEW_INCLUDE_DIRS} ${SDL2_INCLUDE_DIRS} ${SDL2_IMAGE_INCLUDE_DIRS})
+find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3)
+find_package(SDL3_image REQUIRED)
+target_include_directories(Gfx PRIVATE ${OPENGL_INCLUDE_DIRS} ${GLEW_INCLUDE_DIRS} ${SDL3_INCLUDE_DIRS} ${SDL3_IMAGE_INCLUDE_DIRS})
 
 target_link_libraries(Gfx PRIVATE Assets Debug IO Settings Util
-    ${OPENGL_LIBRARIES} ${GLEW_LIBRARIES} ${SDL2_LIBRARIES} SDL2_image::SDL2_image)
+    ${OPENGL_LIBRARIES} ${GLEW_LIBRARIES} ${SDL3_LIBRARIES} SDL3_image::SDL3_image)

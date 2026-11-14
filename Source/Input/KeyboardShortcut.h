@@ -7,7 +7,7 @@
 #pragma once
 
 #include <Input/ModifierKey.h>
-#include <SDL2/SDL_keycode.h>
+#include <SDL3/SDL_keycode.h>
 #include <Util/ErrorOr.h>
 #include <Util/Flags.h>
 

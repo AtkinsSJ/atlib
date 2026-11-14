@@ -15,6 +15,7 @@
 #include <UI/UITheme.h>
 #include <Util/Maths.h>
 #include <Util/Unicode.h>
+#include <cmath>
 
 namespace UI {
 
@@ -332,7 +333,7 @@ bool updateTextInput(TextInput* textInput)
             textInput->caretFlashCounter = 0;
         }
 
-        if (keyJustPressed(SDLK_v, ModifierKey::Ctrl)) {
+        if (keyJustPressed(SDLK_V, ModifierKey::Ctrl)) {
             // Filter the input to remove any blacklisted characters
             String enteredText = getClipboardText();
             for (s32 charIndex = 0; charIndex < enteredText.length(); charIndex++) {

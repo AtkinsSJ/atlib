@@ -9,6 +9,7 @@
 #include <Util/Assert.h>
 #include <Util/Hash.h>
 #include <Util/RawAllocator.h>
+#include <stdlib.h>
 
 template<Hashable T>
 class HashSet {

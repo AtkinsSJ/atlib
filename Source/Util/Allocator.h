@@ -9,6 +9,7 @@
 #include <Util/Array.h>
 #include <Util/Array2.h>
 #include <Util/Span.h>
+#include <new>
 
 class Allocator {
 public:

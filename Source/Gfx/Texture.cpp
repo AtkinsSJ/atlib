@@ -6,15 +6,14 @@
 
 #include "Texture.h"
 #include <Assets/AssetManager.h>
-#include <SDL_image.h>
+#include <SDL3_image/SDL_image.h>
 
 OwnedRef<Texture> Texture::make_placeholder()
 {
     auto pixels = temp_arena().allocate_filled_array<u32>(2 * 2);
     pixels[0] = pixels[3] = 0xffff00ff;
     pixels[1] = pixels[2] = 0xff000000;
-    auto* surface = SDL_CreateRGBSurfaceFrom(pixels.raw_items(), 2, 2, 32, 2 * sizeof(u32),
-        0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
+    auto* surface = SDL_CreateSurfaceFrom(2, 2, SDL_PIXELFORMAT_ABGR8888, pixels.raw_items(), 2 * sizeof(u32));
 
     return adopt_own(*new Texture(surface));
 }
@@ -27,15 +26,15 @@ static ErrorOr<SDL_Surface*> createSurfaceFromFileData(Blob fileData, String nam
     ASSERT(fileData.size() > 0);      //, "Attempted to create a surface from an unloaded asset! ({0})", {name});
     ASSERT(fileData.size() < s32Max); //, "File '{0}' is too big for SDL's RWOps!", {name});
 
-    SDL_RWops* rw = SDL_RWFromConstMem(fileData.data(), truncate32(fileData.size()));
+    SDL_IOStream* rw = SDL_IOFromConstMem(fileData.data(), truncate32(fileData.size()));
     if (rw) {
-        result = IMG_Load_RW(rw, 0);
+        result = IMG_Load_IO(rw, 0);
 
         if (result == nullptr) {
-            return Error { myprintf("Failed to create SDL_Surface from asset '{0}'!\n{1}"_s, { name, String::from_null_terminated(IMG_GetError()) }) };
+            return Error { myprintf("Failed to create SDL_Surface from asset '{0}'!\n{1}"_s, { name, String::from_null_terminated(SDL_GetError()) }) };
         }
 
-        SDL_RWclose(rw);
+        SDL_CloseIO(rw);
     } else {
         return Error { myprintf("Failed to create SDL_RWops from asset '{0}'!\n{1}"_s, { name, String::from_null_terminated(SDL_GetError()) }) };
     }
@@ -50,19 +49,20 @@ ErrorOr<OwnedRef<Texture>> Texture::load(AssetMetadata& metadata, Blob file_data
         return surface_or_error.release_error();
 
     auto* surface = surface_or_error.release_value();
+    auto surface_format = SDL_GetPixelFormatDetails(surface->format);
 
-    if (surface->format->BytesPerPixel != 4) {
-        auto error = Error { myprintf("Texture asset '{0}' is not 32bit, which is all we support right now. (BytesPerPixel = {1})"_s, { metadata.shortName, formatInt(surface->format->BytesPerPixel) }) };
-        SDL_FreeSurface(surface);
+    if (surface_format->bits_per_pixel != 32) {
+        auto error = Error { myprintf("Texture asset '{0}' is not 32bit, which is all we support right now. (format = {1}bit)"_s, { metadata.shortName, formatInt(surface_format->bits_per_pixel) }) };
+        SDL_DestroySurface(surface);
         return error;
     }
 
     // Premultiply alpha
     // NOTE: We always assume the data isn't premultiplied.
-    u32 Rmask = surface->format->Rmask,
-        Gmask = surface->format->Gmask,
-        Bmask = surface->format->Bmask,
-        Amask = surface->format->Amask;
+    u32 Rmask = surface_format->Rmask,
+        Gmask = surface_format->Gmask,
+        Bmask = surface_format->Bmask,
+        Amask = surface_format->Amask;
     float rRmask = (float)Rmask,
           rGmask = (float)Gmask,
           rBmask = (float)Bmask,
@@ -97,7 +97,7 @@ Texture::Texture(SDL_Surface* surface)
 void Texture::unload(AssetMetadata&)
 {
     if (surface != nullptr) {
-        SDL_FreeSurface(surface);
+        SDL_DestroySurface(surface);
         surface = nullptr;
     }
 }

@@ -8,7 +8,7 @@
 
 #include <Assets/Asset.h>
 #include <Assets/AssetManager.h>
-#include <SDL2/SDL_mouse.h>
+#include <SDL3/SDL_mouse.h>
 #include <Util/Forward.h>
 
 class Cursor final : public Asset {

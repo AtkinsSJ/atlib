@@ -43,8 +43,8 @@ float round_float(float in, RoundTies round_ties)
 {
     switch (round_ties) {
     case RoundTies::TowardZero: {
-        float integral = 0.0f;
-        float fractional = modf(in, &integral);
+        double integral = 0.0f;
+        double fractional = modf(in, &integral);
         if (fractional <= 0.5f)
             return integral;
         return integral + (in < 0.0f ? -1.0f : 1.0f);

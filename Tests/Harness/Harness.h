@@ -7,6 +7,7 @@
 #pragma once
 
 #include <Util/Assert.h>
+#include <cstdio>
 
 #define EXPECT(Condition)                                                               \
     g_test_context.current_line = __LINE__;                                             \

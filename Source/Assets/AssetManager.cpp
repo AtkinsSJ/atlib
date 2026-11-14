@@ -8,7 +8,7 @@
 #include <Assets/BuiltinAssetLoader.h>
 #include <IO/DirectoryIterator.h>
 #include <IO/File.h>
-#include <SDL2/SDL_filesystem.h>
+#include <SDL3/SDL_filesystem.h>
 #include <Settings/Settings.h>
 
 namespace Assets {

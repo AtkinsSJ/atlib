@@ -12,7 +12,7 @@
 #include <Gfx/Colour.h>
 #include <Gfx/RenderBuffer.h>
 #include <Gfx/WindowResizeListener.h>
-#include <SDL2/SDL_events.h>
+#include <SDL3/SDL_events.h>
 #include <Settings/SettingsChangeListener.h>
 #include <Util/Basic.h>
 #include <Util/ChunkedArray.h>

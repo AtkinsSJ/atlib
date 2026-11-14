@@ -10,7 +10,7 @@
 #include <Assets/ContainerAsset.h>
 #include <IO/File.h>
 #include <IO/LineReader.h>
-#include <SDL_image.h>
+#include <SDL3_image/SDL_image.h>
 #include <Util/Lexer.h>
 
 // FIXME: Put this somewhere proper eventually. It's currently duplicated with the Texture loading code.
@@ -21,15 +21,15 @@ static SDL_Surface* createSurfaceFromFileData(Blob fileData, String name)
     ASSERT(fileData.size() > 0);      //, "Attempted to create a surface from an unloaded asset! ({0})", {name});
     ASSERT(fileData.size() < s32Max); //, "File '{0}' is too big for SDL's RWOps!", {name});
 
-    SDL_RWops* rw = SDL_RWFromConstMem(fileData.data(), truncate32(fileData.size()));
+    SDL_IOStream* rw = SDL_IOFromConstMem(fileData.data(), truncate32(fileData.size()));
     if (rw) {
-        result = IMG_Load_RW(rw, 0);
+        result = IMG_Load_IO(rw, 0);
 
         if (result == nullptr) {
-            logError("Failed to create SDL_Surface from asset '{0}'!\n{1}"_s, { name, String::from_null_terminated(IMG_GetError()) });
+            logError("Failed to create SDL_Surface from asset '{0}'!\n{1}"_s, { name, String::from_null_terminated(SDL_GetError()) });
         }
 
-        SDL_RWclose(rw);
+        SDL_CloseIO(rw);
     } else {
         logError("Failed to create SDL_RWops from asset '{0}'!\n{1}"_s, { name, String::from_null_terminated(SDL_GetError()) });
     }
@@ -80,7 +80,7 @@ ErrorOr<OwnedRef<Asset>> Cursor::load_defs(AssetMetadata& metadata, Blob data)
         auto image_data = readTempFile(image_path);
         auto* cursor_surface = createSurfaceFromFileData(image_data, metadata.shortName);
         auto* sdl_cursor = SDL_CreateColorCursor(cursor_surface, cursor_def.hotspot.x, cursor_def.hotspot.y);
-        SDL_FreeSurface(cursor_surface);
+        SDL_DestroySurface(cursor_surface);
 
         cursor_metadata->loaded_asset = adopt_own(*new Cursor(sdl_cursor));
         cursor_metadata->state = AssetMetadata::State::Loaded;
@@ -91,7 +91,7 @@ ErrorOr<OwnedRef<Asset>> Cursor::load_defs(AssetMetadata& metadata, Blob data)
 }
 
 Cursor::Cursor()
-    : m_sdl_cursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW))
+    : m_sdl_cursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT))
 {
 }
 
@@ -108,7 +108,7 @@ void Cursor::set_as_cursor() const
 void Cursor::unload(AssetMetadata&)
 {
     if (m_sdl_cursor != nullptr) {
-        SDL_FreeCursor(m_sdl_cursor);
+        SDL_DestroyCursor(m_sdl_cursor);
         m_sdl_cursor = nullptr;
     }
 }
