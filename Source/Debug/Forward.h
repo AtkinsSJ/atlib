@@ -6,4 +6,4 @@
 
 #pragma once
 
-struct Console;
+class Console;

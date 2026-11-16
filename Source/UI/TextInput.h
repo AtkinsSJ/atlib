@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2025, Sam Atkins <sam@samatkins.co.uk>
+ * Copyright (c) 2017-2026, Sam Atkins <sam@samatkins.co.uk>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -20,14 +20,16 @@ struct TextInputPos {
 };
 
 struct TextInput {
+public:
+    TextInput(Allocator&, s32 length, String character_blacklist = ""_s);
 
     Span<char> buffer;
 
-    s32 byteLength;
-    s32 glyphLength;
+    s32 byteLength { 0 };
+    s32 glyphLength { 0 };
 
-    TextInputPos caret;
-    float caretFlashCounter;
+    TextInputPos caret {};
+    float caretFlashCounter { 0 };
 
     String characterBlacklist;
 
@@ -59,10 +61,9 @@ struct TextInput {
     TextInputPos findStartOfWordRight() const;
 };
 
-TextInput newTextInput(MemoryArena* arena, s32 length, String characterBlacklist = "`"_s);
 // Returns true if pressed RETURN
 bool updateTextInput(TextInput* textInput);
-V2I calculateTextInputSize(TextInput* textInput, TextInputStyle* style, s32 maxWidth = 0, bool fillWidth = true);
+V2I calculateTextInputSize(TextInput const* textInput, TextInputStyle* style, s32 maxWidth = 0, bool fillWidth = true);
 Rect2I drawTextInput(RenderBuffer* renderBuffer, TextInput* textInput, TextInputStyle* style, Rect2I bounds);
 
 }

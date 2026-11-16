@@ -37,49 +37,51 @@ struct Command {
     }
 };
 
-struct Console : public AssetManagerListener {
+class Console : public AssetManagerListener {
+public:
+    static Console& init(Allocator&, float open_height, float maximised_height, float open_speed);
+    static Console& the();
+    static bool is_enabled();
+
     virtual ~Console() override = default;
+
+    void update_and_render(float delta_time);
+
+    void write_line(String text, ConsoleLineStyle line_style = ConsoleLineStyle::Default);
 
     virtual void after_assets_loaded() override;
     virtual void before_assets_unloaded() override;
 
     void register_command(Command&&);
-
     void register_default_commands();
+    HashMap<String, Command> const& commands() const { return m_commands; }
 
-    TypedAssetRef<UI::ConsoleStyle> style { "default"_s };
+private:
+    Console(Allocator&, float open_height, float maximised_height, float open_speed);
 
-    float currentHeight;
-    float targetHeight;
-    float openHeight;      // % of screen height
-    float maximisedHeight; // % of screen height
-    float openSpeed;       // % per second
+    void handle_command(StringView command_input);
 
-    UI::TextInput input;
-    ChunkedArray<String> inputHistory;
-    s32 inputHistoryCursor;
+    Rect2I get_scrollbar_bounds() const;
 
-    ChunkedArray<ConsoleOutputLine> outputLines;
-    UI::Scrollbar scrollbar { Orientation::Vertical };
+    TypedAssetRef<UI::ConsoleStyle> m_style { "default"_s };
 
-    HashMap<String, Command> commands { 128 };
-    ChunkedArray<CommandShortcut> commandShortcuts;
+    float m_current_height;
+    float m_target_height;
+    float m_open_height;      // % of screen height
+    float m_maximised_height; // % of screen height
+    float m_open_speed;       // % per second
+
+    UI::TextInput m_input;
+    ChunkedArray<String> m_input_history;
+    s32 m_input_history_cursor;
+
+    ChunkedArray<ConsoleOutputLine> m_output_lines;
+    UI::Scrollbar m_scrollbar { Orientation::Vertical };
+
+    HashMap<String, Command> m_commands { 128 };
+    ChunkedArray<CommandShortcut> m_command_shortcuts;
 };
 
-inline Console* globalConsole;
 s32 const consoleLineLength = 255;
 
-void initConsole(MemoryArena* debugArena, float openHeight, float maximisedHeight, float openSpeed);
-void updateAndRenderConsole(Console* console);
-
-void consoleHandleCommand(Console* console, StringView commandInput);
-
 void consoleWriteLine(String text, ConsoleLineStyle style = ConsoleLineStyle::Default);
-
-// Private
-Rect2I getConsoleScrollbarBounds(Console* console);
-
-inline s32 consoleMaxScrollPos(Console* console)
-{
-    return truncate32(console->outputLines.count - 1);
-}

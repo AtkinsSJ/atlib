@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2025, Sam Atkins <sam@samatkins.co.uk>
+ * Copyright (c) 2017-2026, Sam Atkins <sam@samatkins.co.uk>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -17,6 +17,12 @@
 #include <Util/Unicode.h>
 
 namespace UI {
+
+TextInput::TextInput(Allocator& allocator, s32 length, String character_blacklist)
+    : buffer(allocator.allocate_multiple<char>(length + 1))
+    , characterBlacklist(move(character_blacklist))
+{
+}
 
 bool TextInput::isEmpty() const
 {
@@ -349,15 +355,7 @@ bool updateTextInput(TextInput* textInput)
     return pressedReturn;
 }
 
-TextInput newTextInput(MemoryArena* arena, s32 length, String characterBlacklist)
-{
-    return TextInput {
-        .buffer = arena->allocate_multiple<char>(length + 1),
-        .characterBlacklist = characterBlacklist,
-    };
-}
-
-V2I calculateTextInputSize(TextInput* textInput, TextInputStyle* style, s32 maxWidth, bool fillWidth)
+V2I calculateTextInputSize(TextInput const* textInput, TextInputStyle* style, s32 maxWidth, bool fillWidth)
 {
     s32 textMaxWidth = (maxWidth == 0) ? 0 : (maxWidth - (style->padding.left + style->padding.right));
 

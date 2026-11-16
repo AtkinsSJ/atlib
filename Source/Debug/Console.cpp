@@ -18,7 +18,7 @@
 #include <UI/Toast.h>
 #include <Util/Lexer.h>
 
-static Console theConsole;
+static Console* s_console = nullptr;
 
 /*
  * Our custom logger posts the message into the built-in console, AND then sends it off to SDL's
@@ -52,100 +52,111 @@ void console_log_output_function(void* /*userdata*/, int category, SDL_LogPriori
     consoleWriteLine(String::from_null_terminated(message), style);
 }
 
-void initConsole(MemoryArena* debugArena, float openHeight, float maximisedHeight, float openSpeed)
+Console& Console::init(Allocator& allocator, float open_height, float maximised_height, float open_speed)
 {
-    Console* console = &theConsole;
+    s_console = new Console(allocator, open_height, maximised_height, open_speed);
 
-    console->currentHeight = 0;
-
-    console->openHeight = openHeight;
-    console->maximisedHeight = maximisedHeight;
-    console->openSpeed = openSpeed;
-
-    console->input = UI::newTextInput(debugArena, consoleLineLength);
-    console->inputHistory = ChunkedArray<String>(*debugArena, 256);
-    console->inputHistoryCursor = -1;
-
-    console->outputLines = ChunkedArray<ConsoleOutputLine>(*debugArena, 1024);
-
-    console->commandShortcuts = ChunkedArray<CommandShortcut>(*debugArena, 64);
-    console->register_default_commands();
-
-    globalConsole = console;
     SDL_LogGetOutputFunction(&default_logger, &default_logger_user_data);
     SDL_LogSetOutputFunction(&console_log_output_function, nullptr);
+
+    return *s_console;
 }
 
-void updateAndRenderConsole(Console* console)
+Console::Console(Allocator& allocator, float open_height, float maximised_height, float open_speed)
+    : m_current_height(0)
+    , m_open_height(open_height)
+    , m_maximised_height(maximised_height)
+    , m_open_speed(open_speed)
+    , m_input(allocator, consoleLineLength, "`"_s)
+    , m_input_history(allocator, 256)
+    , m_input_history_cursor(-1)
+    , m_output_lines(allocator, 1024)
+    , m_command_shortcuts(allocator, 128)
+{
+    register_default_commands();
+}
+
+Console& Console::the()
+{
+    ASSERT(s_console);
+    return *s_console;
+}
+
+bool Console::is_enabled()
+{
+    return s_console != nullptr;
+}
+
+void Console::update_and_render(float delta_time)
 {
     bool scrollToBottom = false;
     auto& renderer = the_renderer();
 
     if (!isInputCaptured()) {
         // Keyboard shortcuts for commands
-        for (auto it = console->commandShortcuts.iterate();
+        for (auto it = m_command_shortcuts.iterate();
             it.hasNext();
             it.next()) {
             auto& shortcut = it.get();
 
             if (shortcut.shortcut.was_just_pressed()) {
-                consoleHandleCommand(console, shortcut.command);
+                handle_command(shortcut.command);
                 scrollToBottom = true;
             }
         }
     }
 
-    if (!isInputCaptured() || hasCapturedInput(&console->input)) {
+    if (!isInputCaptured() || hasCapturedInput(&m_input)) {
         // Show/hide the console
         if (keyJustPressed(SDLK_BACKQUOTE)) {
             if (modifierKeyIsPressed(ModifierKey::Ctrl)) {
-                if (console->targetHeight == console->maximisedHeight) {
-                    console->targetHeight = console->openHeight;
+                if (m_target_height == m_maximised_height) {
+                    m_target_height = m_open_height;
                 } else {
-                    console->targetHeight = console->maximisedHeight;
+                    m_target_height = m_maximised_height;
                 }
                 scrollToBottom = true;
             } else {
-                if (console->targetHeight > 0) {
-                    console->targetHeight = 0;
+                if (m_target_height > 0) {
+                    m_target_height = 0;
                 } else {
-                    console->targetHeight = console->openHeight;
+                    m_target_height = m_open_height;
                     scrollToBottom = true;
                 }
             }
         }
     }
 
-    if (console->currentHeight != console->targetHeight) {
-        console->currentHeight = approach(console->currentHeight, console->targetHeight, console->openSpeed * App::the().delta_time());
+    if (m_current_height != m_target_height) {
+        m_current_height = approach(m_current_height, m_target_height, m_open_speed * delta_time);
     }
 
     // This is a little hacky... I think we want the console to ALWAYS consume input if it is open.
     // Other things can't take control from it.
     // Maybe this is a terrible idea? Not sure, but we'll see.
     // - Sam, 16/01/2020
-    if (console->currentHeight > 0) {
-        captureInput(&console->input);
+    if (m_current_height > 0) {
+        captureInput(&m_input);
     } else {
-        releaseInput(&console->input);
+        releaseInput(&m_input);
     }
 
-    if (hasCapturedInput(&console->input)) {
-        if (UI::updateTextInput(&console->input)) {
-            consoleHandleCommand(console, console->input.text());
+    if (hasCapturedInput(&m_input)) {
+        if (UI::updateTextInput(&m_input)) {
+            handle_command(m_input.text());
             scrollToBottom = true;
-            console->input.clear();
+            m_input.clear();
         } else {
             // Tab completion
             // FIXME: Move this behaviour into TextInput?
             if (keyJustPressed(SDLK_TAB)) {
-                auto word_to_complete = console->input.last_word();
+                auto word_to_complete = m_input.last_word();
                 if (!word_to_complete.is_empty()) {
                     // Search through our commands to find one that matches
                     // Eventually, we might want to cache an array of commands, but that's a low priority for now
                     Optional<StringView> command_to_complete;
 
-                    for (auto& [name, command] : console->commands) {
+                    for (auto& [name, command] : m_commands) {
                         if (name.starts_with(word_to_complete)) {
                             command_to_complete = name.view();
                             break;
@@ -153,55 +164,55 @@ void updateAndRenderConsole(Console* console)
                     }
 
                     if (command_to_complete.has_value())
-                        console->input.insert(command_to_complete.value().substring(word_to_complete.length()));
+                        m_input.insert(command_to_complete.value().substring(word_to_complete.length()));
                 }
             }
             // Command history
             else if (keyJustPressed(SDLK_UP)) {
-                if (console->inputHistory.count > 0) {
-                    if (console->inputHistoryCursor == -1) {
-                        console->inputHistoryCursor = truncate32(console->inputHistory.count - 1);
+                if (m_input_history.count > 0) {
+                    if (m_input_history_cursor == -1) {
+                        m_input_history_cursor = truncate32(m_input_history.count - 1);
                     } else {
-                        console->inputHistoryCursor = max(console->inputHistoryCursor - 1, 0);
+                        m_input_history_cursor = max(m_input_history_cursor - 1, 0);
                     }
 
-                    console->input.clear();
-                    String const& oldInput = console->inputHistory.get(console->inputHistoryCursor);
-                    console->input.append(oldInput);
+                    m_input.clear();
+                    String const& oldInput = m_input_history.get(m_input_history_cursor);
+                    m_input.append(oldInput);
                 }
             }
             // Command history
             else if (keyJustPressed(SDLK_DOWN)) {
-                if (console->inputHistory.count > 0) {
-                    if (console->inputHistoryCursor == -1) {
-                        console->inputHistoryCursor = truncate32(console->inputHistory.count - 1);
+                if (m_input_history.count > 0) {
+                    if (m_input_history_cursor == -1) {
+                        m_input_history_cursor = truncate32(m_input_history.count - 1);
                     } else {
-                        console->inputHistoryCursor = truncate32(min(console->inputHistoryCursor + 1, (s32)console->inputHistory.count - 1));
+                        m_input_history_cursor = truncate32(min(m_input_history_cursor + 1, (s32)m_input_history.count - 1));
                     }
 
-                    console->input.clear();
-                    String const& oldInput = console->inputHistory.get(console->inputHistoryCursor);
-                    console->input.append(oldInput);
+                    m_input.clear();
+                    String const& oldInput = m_input_history.get(m_input_history_cursor);
+                    m_input.append(oldInput);
                 }
             }
         }
     }
 
     // Display the console
-    if (console->currentHeight > 0) {
+    if (m_current_height > 0) {
         RenderBuffer* renderBuffer = &renderer.debug_buffer();
-        s32 actualConsoleHeight = floor_s32(console->currentHeight * (float)renderer.window_height());
+        s32 actualConsoleHeight = floor_s32(m_current_height * (float)renderer.window_height());
         s32 screenWidth = renderer.window_width();
 
-        UI::ConsoleStyle& consoleStyle = console->style.get();
+        UI::ConsoleStyle& consoleStyle = m_style.get();
         UI::ScrollbarStyle& scrollbarStyle = consoleStyle.scrollbarStyle.get();
         UI::TextInputStyle& textInputStyle = consoleStyle.textInputStyle.get();
 
         // Text input
-        V2I textInputSize = UI::calculateTextInputSize(&console->input, &textInputStyle, screenWidth);
+        V2I textInputSize = UI::calculateTextInputSize(&m_input, &textInputStyle, screenWidth);
         V2I textInputPos = v2i(0, actualConsoleHeight - textInputSize.y);
         Rect2I textInputBounds { textInputPos, textInputSize };
-        UI::drawTextInput(renderBuffer, &console->input, &textInputStyle, textInputBounds);
+        UI::drawTextInput(renderBuffer, &m_input, &textInputStyle, textInputBounds);
 
         // Output area
         V2I textPos = v2i(consoleStyle.padding.left, textInputBounds.y());
@@ -211,26 +222,26 @@ void updateAndRenderConsole(Console* console)
         UI::Drawable(&consoleStyle.background).draw(renderBuffer, consoleBackRect);
 
         // Scrollbar
-        Rect2I scrollbarBounds = getConsoleScrollbarBounds(console);
+        Rect2I scrollbarBounds = get_scrollbar_bounds();
         if (scrollbarBounds.has_positive_area()) {
             s32 fontLineHeight = consoleStyle.font.get().line_height();
-            s32 contentHeight = ((console->outputLines.count - 1) * fontLineHeight) + scrollbarBounds.height();
+            s32 contentHeight = ((m_output_lines.count - 1) * fontLineHeight) + scrollbarBounds.height();
             if (scrollToBottom) {
-                console->scrollbar.scroll_to_bottom();
+                m_scrollbar.scroll_to_bottom();
             }
 
-            console->scrollbar.set_mouse_wheel_step_size(3 * fontLineHeight);
+            m_scrollbar.set_mouse_wheel_step_size(3 * fontLineHeight);
 
-            console->scrollbar.place(contentHeight, scrollbarBounds, &scrollbarStyle, false, renderBuffer);
+            m_scrollbar.place(contentHeight, scrollbarBounds, &scrollbarStyle, false, renderBuffer);
         }
 
         textPos.y -= consoleStyle.padding.bottom;
 
         // print output lines
         auto& consoleFont = consoleStyle.font.get();
-        s32 scrollLinePos = clamp(floor_s32(console->scrollbar.scroll_percent() * console->outputLines.count), 0, console->outputLines.count - 1);
+        s32 scrollLinePos = clamp(floor_s32(m_scrollbar.scroll_percent() * m_output_lines.count), 0, m_output_lines.count - 1);
         Alignment outputLinesAlign { HAlign::Left, VAlign::Bottom };
-        for (auto it = console->outputLines.iterate(scrollLinePos, false, true);
+        for (auto it = m_output_lines.iterate(scrollLinePos, false, true);
             it.hasNext();
             it.next()) {
             auto& line = it.get();
@@ -249,56 +260,60 @@ void updateAndRenderConsole(Console* console)
     }
 }
 
-void consoleHandleCommand(Console* console, StringView commandInput)
+void Console::handle_command(StringView command_input)
 {
     // copy input to output, for readability
-    consoleWriteLine(myprintf("> {0}"_s, { commandInput }), ConsoleLineStyle::InputEcho);
+    write_line(myprintf("> {0}"_s, { command_input }), ConsoleLineStyle::InputEcho);
 
-    if (!commandInput.is_empty()) {
+    if (!command_input.is_empty()) {
         // Add to history
-        console->inputHistory.append(console->inputHistory.allocator->allocate_string(commandInput));
-        console->inputHistoryCursor = -1;
+        m_input_history.append(m_input_history.allocator->allocate_string(command_input));
+        m_input_history_cursor = -1;
 
-        Lexer lexer { commandInput };
+        Lexer lexer { command_input };
         if (auto command_token = lexer.consume_token(); command_token.has_value()) {
             lexer.discard_whitespace();
 
             // Find the command
-            auto command = console->commands.get(command_token.value().deprecated_to_string());
+            auto command = m_commands.get(command_token.value().deprecated_to_string());
 
-            // Run the command
+            // Run the commands
             if (command.has_value()) {
                 u32 commandStartTime = SDL_GetTicks();
-                command->function(*console, lexer);
+                command->function(*this, lexer);
                 u32 commandEndTime = SDL_GetTicks();
 
-                consoleWriteLine(myprintf("Command executed in {0}ms"_s, { formatInt(commandEndTime - commandStartTime) }));
+                write_line(myprintf("Command executed in {0}ms"_s, { formatInt(commandEndTime - commandStartTime) }));
             } else {
-                consoleWriteLine(myprintf("I don't understand '{0}'. Try 'help' for a list of commands."_s, { command_token.value() }), ConsoleLineStyle::Error);
+                write_line(myprintf("I don't understand '{0}'. Try 'help' for a list of commands."_s, { command_token.value() }), ConsoleLineStyle::Error);
             }
         }
     }
 }
 
-void consoleWriteLine(String text, ConsoleLineStyle style)
+void Console::write_line(String text, ConsoleLineStyle line_style)
 {
-    if (globalConsole) {
-        ConsoleOutputLine* line = globalConsole->outputLines.appendBlank();
-        line->style = style;
-        line->text = globalConsole->outputLines.allocator->allocate_string(text);
-    }
+    ConsoleOutputLine* line = s_console->m_output_lines.appendBlank();
+    line->style = line_style;
+    line->text = s_console->m_output_lines.allocator->allocate_string(text);
 }
 
-Rect2I getConsoleScrollbarBounds(Console* console)
+void consoleWriteLine(String text, ConsoleLineStyle style)
+{
+    if (s_console)
+        s_console->write_line(text, style);
+}
+
+Rect2I Console::get_scrollbar_bounds() const
 {
     auto& renderer = the_renderer();
-    UI::ConsoleStyle& consoleStyle = console->style.get();
+    UI::ConsoleStyle& consoleStyle = m_style.get();
     UI::ScrollbarStyle& scrollbarStyle = consoleStyle.scrollbarStyle.get();
     UI::TextInputStyle& textInputStyle = consoleStyle.textInputStyle.get();
 
-    V2I textInputSize = UI::calculateTextInputSize(&console->input, &textInputStyle, renderer.window_width());
+    V2I textInputSize = UI::calculateTextInputSize(&m_input, &textInputStyle, renderer.window_width());
 
-    Rect2I scrollbarBounds { static_cast<s32>(renderer.window_width() - scrollbarStyle.width), 0, scrollbarStyle.width, floor_s32(console->currentHeight * renderer.window_height()) - textInputSize.y };
+    Rect2I scrollbarBounds { static_cast<s32>(renderer.window_width() - scrollbarStyle.width), 0, scrollbarStyle.width, floor_s32(m_current_height * renderer.window_height()) - textInputSize.y };
 
     return scrollbarBounds;
 }
@@ -306,7 +321,7 @@ Rect2I getConsoleScrollbarBounds(Console* console)
 void Console::register_command(Command&& command)
 {
     auto name = command.name;
-    commands.set(name, move(command));
+    m_commands.set(name, move(command));
 }
 
 void Console::after_assets_loaded()
@@ -314,34 +329,34 @@ void Console::after_assets_loaded()
     // Load the dev keymap
     auto const& keymap = Keymap::get("dev.keymap"_sv);
     for (auto const& shortcut : keymap.shortcuts())
-        commandShortcuts.append(shortcut);
+        m_command_shortcuts.append(shortcut);
 }
 
 void Console::before_assets_unloaded()
 {
     // Unload the dev keymap
-    commandShortcuts.clear();
+    m_command_shortcuts.clear();
 }
 
 #define ConsoleCommand(name) static void cmd_##name([[maybe_unused]] Console& console, [[maybe_unused]] Lexer& arguments)
 ConsoleCommand(exit)
 {
-    consoleWriteLine("Quitting game..."_s, ConsoleLineStyle::Success);
+    console.write_line("Quitting game..."_s, ConsoleLineStyle::Success);
     input_state().receivedQuitSignal = true;
 }
 
 ConsoleCommand(hello)
 {
-    consoleWriteLine("Hello human!"_s);
-    consoleWriteLine(myprintf("Testing formatInt bases: 10:{0}, 16:{1}, 36:{2}, 8:{3}, 2:{4}"_s, { formatInt(123456, 10), formatInt(123456, 16), formatInt(123456, 36), formatInt(123456, 8), formatInt(123456, 2) }));
+    console.write_line("Hello human!"_s);
+    console.write_line(myprintf("Testing formatInt bases: 10:{0}, 16:{1}, 36:{2}, 8:{3}, 2:{4}"_s, { formatInt(123456, 10), formatInt(123456, 16), formatInt(123456, 36), formatInt(123456, 8), formatInt(123456, 2) }));
 }
 
 ConsoleCommand(help)
 {
-    consoleWriteLine("Available commands are:"_s);
+    console.write_line("Available commands are:"_s);
 
-    for (auto& [name, command] : console.commands)
-        consoleWriteLine(myprintf(" - {0}"_s, { name }));
+    for (auto& [name, command] : console.commands())
+        console.write_line(myprintf(" - {0}"_s, { name }));
 }
 
 ConsoleCommand(reload_assets)
@@ -360,37 +375,37 @@ ConsoleCommand(setting)
     auto& settings = *Settings::the().settings;
 
     if (!arguments.has_next()) {
-        consoleWriteLine("Available settings:"_s, ConsoleLineStyle::Success);
-        settings.for_each_setting([](auto& setting) {
-            consoleWriteLine(setting.name(), ConsoleLineStyle::Success);
+        console.write_line("Available settings:"_s, ConsoleLineStyle::Success);
+        settings.for_each_setting([&](auto& setting) {
+            console.write_line(setting.name(), ConsoleLineStyle::Success);
         });
         return;
     }
 
     auto maybe_setting_name = arguments.consume_token();
     if (!maybe_setting_name.has_value()) {
-        consoleWriteLine("Missing setting name."_s, ConsoleLineStyle::Error);
+        console.write_line("Missing setting name."_s, ConsoleLineStyle::Error);
         return;
     }
     auto setting_name = maybe_setting_name.release_value();
     arguments.discard_whitespace();
     auto maybe_setting = settings.get_setting(setting_name.deprecated_to_string());
     if (!maybe_setting.has_value()) {
-        consoleWriteLine(myprintf("Unrecognized setting name '{}'."_s, { setting_name }), ConsoleLineStyle::Error);
+        console.write_line(myprintf("Unrecognized setting name '{}'."_s, { setting_name }), ConsoleLineStyle::Error);
         return;
     }
     auto& setting = *maybe_setting.release_value();
 
     if (!arguments.has_next()) {
-        consoleWriteLine(myprintf("{} is {}"_s, { setting_name, setting.serialize_value() }), ConsoleLineStyle::Success);
+        console.write_line(myprintf("{} is {}"_s, { setting_name, setting.serialize_value() }), ConsoleLineStyle::Success);
         return;
     }
 
     if (setting.read(arguments)) {
         Settings::the().apply();
-        consoleWriteLine(myprintf("Set {} to {}"_s, { setting_name, setting.serialize_value() }), ConsoleLineStyle::Success);
+        console.write_line(myprintf("Set {} to {}"_s, { setting_name, setting.serialize_value() }), ConsoleLineStyle::Success);
     } else {
-        consoleWriteLine(myprintf("Unable to set {}: invalid format"_s, { setting_name }), ConsoleLineStyle::Error);
+        console.write_line(myprintf("Unable to set {}: invalid format"_s, { setting_name }), ConsoleLineStyle::Error);
     }
 }
 
@@ -399,7 +414,7 @@ ConsoleCommand(speed)
     auto& app = App::the();
 
     if (!arguments.has_next()) {
-        consoleWriteLine(myprintf("Current game speed: {0}"_s, { formatFloat(app.speed_multiplier(), 3) }), ConsoleLineStyle::Success);
+        console.write_line(myprintf("Current game speed: {0}"_s, { formatFloat(app.speed_multiplier(), 3) }), ConsoleLineStyle::Success);
         return;
     }
 
@@ -408,18 +423,18 @@ ConsoleCommand(speed)
     if (speed_multiplier.has_value() && !arguments.has_next()) {
         float multiplier = speed_multiplier.value();
         app.set_speed_multiplier(multiplier);
-        consoleWriteLine(myprintf("Set speed to {0}"_s, { formatFloat(multiplier, 3) }), ConsoleLineStyle::Success);
+        console.write_line(myprintf("Set speed to {0}"_s, { formatFloat(multiplier, 3) }), ConsoleLineStyle::Success);
         return;
     }
 
-    consoleWriteLine("Usage: `speed [MULTIPLIER]`, where MULTIPLIER is a float, or with no argument to list the current speed"_s, ConsoleLineStyle::Error);
+    console.write_line("Usage: `speed [MULTIPLIER]`, where MULTIPLIER is a float, or with no argument to list the current speed"_s, ConsoleLineStyle::Error);
 }
 
 ConsoleCommand(toast)
 {
     auto text = arguments.consume_remainder();
     if (!text.has_value()) {
-        consoleWriteLine("Usage: `toast TEXT GOES HERE`"_s, ConsoleLineStyle::Error);
+        console.write_line("Usage: `toast TEXT GOES HERE`"_s, ConsoleLineStyle::Error);
         return;
     }
     UI::Toast::show(text.release_value());
@@ -432,7 +447,7 @@ ConsoleCommand(zoom)
     if (!arguments.has_next()) {
         // list the zoom
         float zoom = renderer.world_camera().zoom();
-        consoleWriteLine(myprintf("Current zoom is {0}"_s, { formatFloat(zoom, 3) }), ConsoleLineStyle::Success);
+        console.write_line(myprintf("Current zoom is {0}"_s, { formatFloat(zoom, 3) }), ConsoleLineStyle::Success);
     } else {
         // set the zoom
         auto requested_zoom = arguments.consume_float();
@@ -440,10 +455,10 @@ ConsoleCommand(zoom)
         if (requested_zoom.has_value() && !arguments.has_next()) {
             float newZoom = requested_zoom.release_value();
             renderer.world_camera().set_zoom(newZoom);
-            consoleWriteLine(myprintf("Set zoom to {0}"_s, { formatFloat(newZoom, 3) }), ConsoleLineStyle::Success);
+            console.write_line(myprintf("Set zoom to {0}"_s, { formatFloat(newZoom, 3) }), ConsoleLineStyle::Success);
             return;
         }
-        consoleWriteLine("Usage: `zoom [SCALE]`, where SCALE is a float, or with no argument to list the current zoom"_s, ConsoleLineStyle::Error);
+        console.write_line("Usage: `zoom [SCALE]`, where SCALE is a float, or with no argument to list the current zoom"_s, ConsoleLineStyle::Error);
     }
 }
 #undef ConsoleCommand
