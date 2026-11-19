@@ -4,7 +4,7 @@ function(atlib_test source)
     get_filename_component(ATLIB_TEST_NAME ${source} NAME_WE)
     add_executable(${ATLIB_TEST_NAME} ${source})
     target_include_directories(${ATLIB_TEST_NAME} PRIVATE "../Source" ${SDL3_INCLUDE_DIRS})
-    target_link_libraries(${ATLIB_TEST_NAME} PRIVATE Util ${SDL3_LIBRARIES})
+    target_link_libraries(${ATLIB_TEST_NAME} PRIVATE Util SDL3::SDL3)
 
     add_test(NAME ${ATLIB_TEST_NAME}
         COMMAND ${ATLIB_TEST_NAME})

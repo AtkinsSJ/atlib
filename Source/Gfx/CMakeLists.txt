@@ -27,4 +27,4 @@ find_package(SDL3_image REQUIRED)
 target_include_directories(Gfx PRIVATE ${OPENGL_INCLUDE_DIRS} ${GLEW_INCLUDE_DIRS} ${SDL3_INCLUDE_DIRS} ${SDL3_IMAGE_INCLUDE_DIRS})
 
 target_link_libraries(Gfx PRIVATE Assets Debug IO Settings Util
-    ${OPENGL_LIBRARIES} ${GLEW_LIBRARIES} ${SDL3_LIBRARIES} SDL3_image::SDL3_image)
+    ${OPENGL_LIBRARIES} ${GLEW_LIBRARIES} SDL3::SDL3 SDL3_image::SDL3_image)

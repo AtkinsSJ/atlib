@@ -9,7 +9,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DBUILD_DEBUG=0")
 
 if (MSVC)
     add_compile_options(-EHsc -MD -W4 -wd4201 -Zi -Od -Oi)
-else()
+else ()
     add_compile_options(
         -Wall
         -Werror
@@ -18,11 +18,11 @@ else()
         -Wno-unqualified-std-cast-call
         -Wundef
     )
-endif()
+endif ()
 
 add_library(AtLib INTERFACE)
 add_subdirectory("Source")
 add_subdirectory("Tests")
 include_directories("Source")
 
-target_link_libraries(AtLib INTERFACE App Assets Debug Gfx Input IO Settings UI Util)
+target_link_libraries(AtLib INTERFACE App Assets Audio Debug Gfx Input IO Settings UI Util)

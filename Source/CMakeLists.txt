@@ -1,5 +1,6 @@
 add_subdirectory("App")
 add_subdirectory("Assets")
+add_subdirectory("Audio")
 add_subdirectory("Debug")
 add_subdirectory("Gfx")
 add_subdirectory("Input")
