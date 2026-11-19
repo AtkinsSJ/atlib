@@ -44,28 +44,21 @@ public:
     template<typename T>
     T const& read()
     {
-        ASSERT(m_current_chunk);
-        ASSERT(m_pos + sizeof(T) <= m_current_chunk->used);
-
-        T* item = reinterpret_cast<T*>(m_current_chunk->memory + m_pos);
-        m_pos += sizeof(T);
-        return *item;
+        return *reinterpret_cast<T*>(read_bytes(sizeof(T)));
     }
 
     template<typename T>
     ReadonlySpan<T> read_multiple(size_t count)
     {
-        ASSERT(m_current_chunk);
-        ASSERT(m_pos + count * sizeof(T) <= m_current_chunk->used);
-
-        T* item = reinterpret_cast<T*>(m_current_chunk->memory + m_pos);
-        m_pos += sizeof(T) * count;
-        return ReadonlySpan { count, item };
+        T* first_item = reinterpret_cast<T*>(read_bytes(count * sizeof(T)));
+        return ReadonlySpan { count, first_item };
     }
 
     void next_chunk();
 
 private:
+    u8* read_bytes(size_t count);
+
     RenderBufferChunk* m_current_chunk;
     size_t m_pos;
 };

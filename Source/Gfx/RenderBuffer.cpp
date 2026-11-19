@@ -59,6 +59,16 @@ void RenderBufferReader::next_chunk()
     m_pos = 0;
 }
 
+u8* RenderBufferReader::read_bytes(size_t count)
+{
+    ASSERT(m_current_chunk);
+    ASSERT(m_pos + count <= m_current_chunk->used);
+
+    u8* start = m_current_chunk->memory + m_pos;
+    m_pos += count;
+    return start;
+}
+
 void RenderBuffer::take_from(RenderBuffer& other)
 {
     if (other.m_current_chunk != nullptr) {
