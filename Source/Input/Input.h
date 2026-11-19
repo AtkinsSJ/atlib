@@ -9,10 +9,10 @@
 #include <Gfx/Forward.h>
 #include <Input/ModifierKey.h>
 #include <Input/TextInputTarget.h>
-#include <SDL2/SDL_events.h>
-#include <SDL2/SDL_keycode.h>
-#include <SDL2/SDL_mouse.h>
-#include <SDL2/SDL_scancode.h>
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_keycode.h>
+#include <SDL3/SDL_mouse.h>
+#include <SDL3/SDL_scancode.h>
 #include <Util/Basic.h>
 #include <Util/EnumMap.h>
 #include <Util/Flags.h>
@@ -23,7 +23,7 @@
 #include <Util/StringView.h>
 #include <Util/Vector.h>
 
-int const KEYBOARD_KEY_COUNT = SDL_NUM_SCANCODES;
+int const KEYBOARD_KEY_COUNT = SDL_SCANCODE_COUNT;
 
 enum class MouseButton : u8 {
     // NB: There is no button for 0, so any arrays of foo[MouseButton::COUNT] never use the first element.
@@ -53,13 +53,13 @@ struct InputState {
     bool _keyDownIsRepeat[KEYBOARD_KEY_COUNT];
 
     Optional<Ref<TextInputTarget>> m_text_input_target;
-    bool hasUnhandledTextEntered; // Has anyone requested the _textEntered?
-    StringBuffer<SDL_TEXTINPUTEVENT_TEXT_SIZE> textEntered;
+    bool hasUnhandledTextEntered;   // Has anyone requested the _textEntered?
+    StringBuffer<1024> textEntered; // FIXME: SDL3 doesn't guarantee a maximum size for this.
 
     // Extra
     bool receivedQuitSignal;
 
-    HashMap<String, SDL_Keycode> key_by_name { SDL_NUM_SCANCODES };
+    HashMap<String, SDL_Keycode> key_by_name { SDL_SCANCODE_COUNT };
 };
 
 //

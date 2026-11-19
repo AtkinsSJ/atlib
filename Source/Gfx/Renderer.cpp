@@ -58,7 +58,7 @@ Renderer::Renderer(SDL_Window* window)
 Renderer::~Renderer()
 {
     if (m_system_wait_cursor != nullptr) {
-        SDL_FreeCursor(m_system_wait_cursor);
+        SDL_DestroyCursor(m_system_wait_cursor);
         m_system_wait_cursor = nullptr;
     }
     s_renderer = nullptr;
@@ -90,8 +90,8 @@ Renderer& the_renderer()
 
 void Renderer::handle_window_event(SDL_WindowEvent const& event)
 {
-    switch (event.event) {
-    case SDL_WINDOWEVENT_SIZE_CHANGED: {
+    switch (event.type) {
+    case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED: {
         m_window_size = v2i(event.data1, event.data2);
 
         on_window_resized(m_window_size.x, m_window_size.y);
@@ -102,6 +102,8 @@ void Renderer::handle_window_event(SDL_WindowEvent const& event)
         ui_camera().set_position(v2(m_window_size) * 0.5f);
         ui_camera().set_screen_rect({ 0, 0, m_window_size.x, m_window_size.y });
     } break;
+    default:
+        break;
     }
 }
 
@@ -170,13 +172,12 @@ void Renderer::resize_window(s32 w, s32 h, bool fullscreen)
     if (fullscreen) {
         // Fullscreen!
         // Grab the desktop resolution to use that
-        s32 displayIndex = SDL_GetWindowDisplayIndex(m_sdl_window);
-        SDL_DisplayMode displayMode;
-        if (SDL_GetDesktopDisplayMode(displayIndex, &displayMode) == 0) {
-            SDL_SetWindowDisplayMode(m_sdl_window, &displayMode);
-            SDL_SetWindowFullscreen(m_sdl_window, SDL_WINDOW_FULLSCREEN_DESKTOP);
-            newW = displayMode.w;
-            newH = displayMode.h;
+        s32 display_index = SDL_GetDisplayForWindow(m_sdl_window);
+        if (auto* display_mode = SDL_GetDesktopDisplayMode(display_index)) {
+            SDL_SetWindowFullscreenMode(m_sdl_window, display_mode);
+            SDL_SetWindowFullscreen(m_sdl_window, true);
+            newW = display_mode->w;
+            newH = display_mode->h;
         } else {
             logError("Failed to get desktop display mode: {0}"_s, { String::from_null_terminated(SDL_GetError()) });
         }
@@ -186,9 +187,9 @@ void Renderer::resize_window(s32 w, s32 h, bool fullscreen)
         SDL_SetWindowFullscreen(m_sdl_window, 0);
 
         // Centre it
-        s32 displayIndex = SDL_GetWindowDisplayIndex(m_sdl_window);
+        s32 display_index = SDL_GetDisplayForWindow(m_sdl_window);
         SDL_Rect displayBounds;
-        if (SDL_GetDisplayBounds(displayIndex, &displayBounds) == 0) {
+        if (SDL_GetDisplayBounds(display_index, &displayBounds)) {
             s32 leftBorder, rightBorder, topBorder, bottomBorder;
             SDL_GetWindowBordersSize(m_sdl_window, &topBorder, &leftBorder, &bottomBorder, &rightBorder);
 
@@ -229,7 +230,10 @@ void Renderer::set_cursor(String name)
 void Renderer::set_cursor_visible(bool visible)
 {
     m_cursor_is_visible = visible;
-    SDL_ShowCursor(visible ? 1 : 0);
+    if (visible)
+        SDL_ShowCursor();
+    else
+        SDL_HideCursor();
 }
 
 RenderBuffer* Renderer::get_temporary_render_buffer(String name)

@@ -5,10 +5,12 @@
  */
 
 #include "StringBase.h"
+
 #include <Util/Memory.h>
 #include <Util/StringBuilder.h>
 #include <Util/StringView.h>
 #include <Util/Unicode.h>
+#include <stdlib.h>
 
 char StringBase::char_at(size_t index) const
 {

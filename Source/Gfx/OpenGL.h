@@ -10,9 +10,9 @@
 
 #if OS_LINUX
 #    include <GL/glew.h>
-#    include <SDL2/SDL_opengl.h>
+#    include <SDL3/SDL_opengl.h>
 #elif OS_WINDOWS
-#    include <SDL_opengl.h>
+#    include <SDL3/SDL_opengl.h>
 #    include <gl/glew.h>
 #endif
 
@@ -85,6 +85,7 @@ private:
     ChunkedArray<ShaderProgram> m_shaders {};
     s32 m_current_shader { -1 };
 
+    GLuint m_vao { 0 };
     GLuint m_vbo { 0 };
     GLuint m_ibo { 0 };
 

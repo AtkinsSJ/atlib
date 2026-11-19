@@ -12,6 +12,8 @@
 void TextInputTarget::capture_input()
 {
     auto& input = input_state();
+    if (!input.m_text_input_target.has_value())
+        SDL_StartTextInput(the_renderer().sdl_window());
     input.m_text_input_target = Ref { *this };
 }
 
@@ -20,6 +22,7 @@ void TextInputTarget::release_input()
     auto& input = input_state();
     if (input.m_text_input_target == *this) {
         input.m_text_input_target.clear();
+        SDL_StopTextInput(the_renderer().sdl_window());
     }
 }
 

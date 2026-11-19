@@ -40,7 +40,7 @@ bool Renderer::set_up_context()
 
     // GLEW
     glewExperimental = GL_TRUE;
-    if (auto const glewError = glewInit(); glewError != GLEW_OK) {
+    if (auto const glewError = glewInit(); glewError != GLEW_OK && glewError != GLEW_ERROR_NO_GLX_DISPLAY) {
         logCritical("Could not initialise GLEW! :(\n {0}"_s, { String::from_null_terminated((char*)glewGetErrorString(glewError)) });
         return false;
     }
@@ -57,15 +57,17 @@ bool Renderer::set_up_context()
 #endif
 
     // VSync
-    if (SDL_GL_SetSwapInterval(1) < 0) {
+    if (!SDL_GL_SetSwapInterval(1)) {
         logCritical("Could not set vsync! :(\n {0}"_s, { String::from_null_terminated(SDL_GetError()) });
         return false;
     }
 
     // Init OpenGL
-    glEnable(GL_TEXTURE_2D);
     glEnable(GL_BLEND);
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+    glGenVertexArrays(1, &m_vao);
+    glBindVertexArray(m_vao);
 
     glGenBuffers(1, &m_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
@@ -119,7 +121,7 @@ Renderer::Renderer(SDL_Window* window)
 
 void Renderer::free()
 {
-    SDL_GL_DeleteContext(m_context);
+    SDL_GL_DestroyContext(m_context);
     m_context = nullptr;
 }
 

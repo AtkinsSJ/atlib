@@ -115,7 +115,7 @@ FileHandle openFile(String path, FileAccessMode mode)
     FileHandle result = {};
 
     result.path = path;
-    result.sdl_file = SDL_RWFromFile(path.raw_pointer_to_characters(), file_access_mode_strings[mode].raw_pointer_to_characters());
+    result.sdl_file = SDL_IOFromFile(path.raw_pointer_to_characters(), file_access_mode_strings[mode].raw_pointer_to_characters());
     result.isOpen = (result.sdl_file != nullptr);
 
     return result;
@@ -126,7 +126,7 @@ void closeFile(FileHandle* file)
     DEBUG_FUNCTION();
 
     if (file->isOpen) {
-        SDL_RWclose(file->sdl_file);
+        SDL_CloseIO(file->sdl_file);
         file->isOpen = false;
     }
 }
@@ -136,7 +136,7 @@ s64 getFilePosition(FileHandle* file)
     s64 result = -1;
 
     if (file->isOpen) {
-        result = SDL_RWtell(file->sdl_file);
+        result = SDL_TellIO(file->sdl_file);
     }
 
     return result;
@@ -147,10 +147,10 @@ smm getFileSize(FileHandle* file)
     smm fileSize = -1;
 
     if (file->isOpen) {
-        s64 currentPos = SDL_RWtell(file->sdl_file);
+        s64 currentPos = SDL_TellIO(file->sdl_file);
 
-        fileSize = (smm)SDL_RWseek(file->sdl_file, 0, RW_SEEK_END);
-        SDL_RWseek(file->sdl_file, currentPos, RW_SEEK_SET);
+        fileSize = (smm) SDL_SeekIO(file->sdl_file, 0, SDL_IO_SEEK_END);
+        SDL_SeekIO(file->sdl_file, currentPos, SDL_IO_SEEK_SET);
     }
 
     return fileSize;
@@ -284,7 +284,8 @@ smm readFromFile(FileHandle* file, Blob& dest)
     smm bytesRead = 0;
 
     if (file->isOpen) {
-        bytesRead = SDL_RWread(file->sdl_file, dest.writable_data(), 1, dest.size());
+        bytesRead = SDL_ReadIO(file->sdl_file, dest.writable_data(), dest.size());
+        bytesRead = (bytesRead <= 0) ? 0 : bytesRead;
     }
 
     return bytesRead;
@@ -297,8 +298,9 @@ smm readData(FileHandle* file, smm position, smm size, void* result)
     smm bytesRead = 0;
 
     if (file->isOpen) {
-        if (SDL_RWseek(file->sdl_file, position, RW_SEEK_SET) != -1) {
-            bytesRead = SDL_RWread(file->sdl_file, result, 1, size);
+        if (SDL_SeekIO(file->sdl_file, position, SDL_IO_SEEK_SET) != -1) {
+            bytesRead = SDL_ReadIO(file->sdl_file, result, size);
+            bytesRead = (bytesRead <= 0) ? 0 : bytesRead;
         }
     }
 
@@ -350,7 +352,8 @@ bool writeFile(String filePath, String contents)
     FileHandle file = openFile(filePath, FileAccessMode::Write);
 
     if (file.isOpen) {
-        smm bytesWritten = SDL_RWwrite(file.sdl_file, contents.raw_pointer_to_characters(), 1, contents.length());
+        smm bytesWritten = /* FIXME MIGRATION: double-check if you use the returned value of SDL_RWwrite() */
+            SDL_WriteIO(file.sdl_file, contents.raw_pointer_to_characters(), contents.length());
         succeeded = (bytesWritten == contents.length());
         closeFile(&file);
     } else {
@@ -365,7 +368,8 @@ bool writeToFile(FileHandle* file, smm dataLength, void* data)
     bool succeeded = false;
 
     if (file->isOpen) {
-        smm bytesWritten = SDL_RWwrite(file->sdl_file, data, 1, dataLength);
+        smm bytesWritten = /* FIXME MIGRATION: double-check if you use the returned value of SDL_RWwrite() */
+            SDL_WriteIO(file->sdl_file, data, dataLength);
         succeeded = (bytesWritten == dataLength);
     } else {
         logError("Cannot write to file '{0}'."_s, { file->path });

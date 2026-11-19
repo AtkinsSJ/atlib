@@ -8,6 +8,7 @@
 
 #include <Util/Basic.h>
 #include <Util/Maths.h>
+#include <new>
 #include <typeinfo>
 
 namespace Detail {

@@ -5,8 +5,10 @@
  */
 
 #include "BinaryFileWriter.h"
+
 #include <Util/Enum.h>
 #include <Util/Log.h>
+#include <cstddef>
 
 BinaryFileWriter startWritingFile(FileIdentifier identifier, u8 version, MemoryArena* arena)
 {

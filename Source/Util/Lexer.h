@@ -9,6 +9,7 @@
 #include <Util/Characters.h>
 #include <Util/Function.h>
 #include <Util/StringView.h>
+#include <cmath>
 
 class Lexer {
 public:
@@ -129,7 +130,7 @@ public:
 
             double value = static_cast<double>(whole_component);
             if (fractional_component_length > 0) {
-                value += static_cast<double>(fractional_component) / powf64(10.0, static_cast<double>(fractional_component_length));
+                value += static_cast<double>(fractional_component) / pow(10.0, static_cast<double>(fractional_component_length));
             }
 
             // NB: This copies the old behaviour of allowing percentages and interpreting 100% as 1.0.

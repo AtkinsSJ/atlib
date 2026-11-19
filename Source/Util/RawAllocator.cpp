@@ -5,6 +5,7 @@
  */
 
 #include "RawAllocator.h"
+#include <stdlib.h>
 
 RawAllocator& RawAllocator::the()
 {

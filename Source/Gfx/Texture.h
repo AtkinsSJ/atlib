@@ -7,7 +7,7 @@
 #pragma once
 
 #include <Assets/Asset.h>
-#include <SDL2/SDL_surface.h>
+#include <SDL3/SDL_surface.h>
 #include <Util/Blob.h>
 #include <Util/OwnedPtr.h>
 

@@ -6,6 +6,8 @@
 
 #pragma once
 
+// FIXME: Replace these with the SDL_PLATFORM_FOO macros.
+
 #ifdef __linux__
 #    define OS_LINUX 1
 #elifdef _WIN32

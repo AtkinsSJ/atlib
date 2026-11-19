@@ -7,7 +7,7 @@
 #pragma once
 
 #include <Gfx/Colour.h>
-#include <SDL2/SDL_timer.h>
+#include <SDL3/SDL_timer.h>
 #include <Util/DeprecatedLinkedList.h>
 #include <Util/EnumMap.h>
 #include <Util/HashMap.h>

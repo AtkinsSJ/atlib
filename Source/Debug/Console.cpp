@@ -56,8 +56,8 @@ Console& Console::init(Allocator& allocator, float open_height, float maximised_
 {
     s_console = new Console(allocator, open_height, maximised_height, open_speed);
 
-    SDL_LogGetOutputFunction(&default_logger, &default_logger_user_data);
-    SDL_LogSetOutputFunction(&console_log_output_function, nullptr);
+    SDL_GetLogOutputFunction(&default_logger, &default_logger_user_data);
+    SDL_SetLogOutputFunction(&console_log_output_function, nullptr);
 
     return *s_console;
 }
@@ -108,7 +108,7 @@ void Console::update_and_render(float delta_time)
 
     if (!isInputCaptured() || m_input.has_captured_input()) {
         // Show/hide the console
-        if (keyJustPressed(SDLK_BACKQUOTE)) {
+        if (keyJustPressed(SDLK_GRAVE)) {
             if (modifierKeyIsPressed(ModifierKey::Ctrl)) {
                 if (m_target_height == m_maximised_height) {
                     m_target_height = m_open_height;
