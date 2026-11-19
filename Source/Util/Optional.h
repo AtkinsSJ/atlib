@@ -70,6 +70,12 @@ public:
             m_value.~T();
     }
 
+    void clear()
+    {
+        if (m_has_value)
+            release_value();
+    }
+
     bool has_value() const { return m_has_value; }
 
     T const& value() const
