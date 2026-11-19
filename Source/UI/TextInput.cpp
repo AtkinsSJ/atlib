@@ -24,6 +24,8 @@ TextInput::TextInput(Allocator& allocator, s32 length, String character_blacklis
 {
 }
 
+TextInput::~TextInput() = default;
+
 bool TextInput::isEmpty() const
 {
     return byteLength == 0;
@@ -275,7 +277,7 @@ bool updateTextInput(TextInput* textInput)
 {
     bool pressedReturn = false;
 
-    if (hasCapturedInput(textInput)) {
+    if (textInput->has_captured_input()) {
         if (keyJustPressed(SDLK_BACKSPACE, ModifierKey::Ctrl)) {
             textInput->backspaceWholeWord();
             textInput->caretFlashCounter = 0;
@@ -385,7 +387,7 @@ Rect2I drawTextInput(RenderBuffer* renderBuffer, TextInput* textInput, TextInput
     Drawable(&style->background).draw(renderBuffer, bounds);
 
     bool showCaret = style->showCaret
-        && hasCapturedInput(textInput)
+        && textInput->has_captured_input()
         && (textInput->caretFlashCounter < (style->caretFlashCycleDuration * 0.5f));
 
     Rect2I textBounds = bounds.shrunk(style->padding);

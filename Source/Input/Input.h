@@ -8,6 +8,7 @@
 
 #include <Gfx/Forward.h>
 #include <Input/ModifierKey.h>
+#include <Input/TextInputTarget.h>
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_keycode.h>
 #include <SDL2/SDL_mouse.h>
@@ -16,6 +17,7 @@
 #include <Util/EnumMap.h>
 #include <Util/Flags.h>
 #include <Util/HashMap.h>
+#include <Util/Ref.h>
 #include <Util/String.h>
 #include <Util/StringBuffer.h>
 #include <Util/StringView.h>
@@ -50,6 +52,7 @@ struct InputState {
     bool _keyDown[KEYBOARD_KEY_COUNT];
     bool _keyDownIsRepeat[KEYBOARD_KEY_COUNT];
 
+    Optional<Ref<TextInputTarget>> m_text_input_target;
     bool hasUnhandledTextEntered; // Has anyone requested the _textEntered?
     StringBuffer<SDL_TEXTINPUTEVENT_TEXT_SIZE> textEntered;
 
@@ -57,8 +60,6 @@ struct InputState {
     bool receivedQuitSignal;
 
     HashMap<String, SDL_Keycode> key_by_name { SDL_NUM_SCANCODES };
-
-    void* capturedInputTarget; // eg, a TextInput that's currently consuming all key presses
 };
 
 //
@@ -84,9 +85,6 @@ StringView getEnteredText();
 String getClipboardText();
 
 // eg, a TextInput that's currently consuming all key presses
-void captureInput(void* target);
-void releaseInput(void* target);
-bool hasCapturedInput(void* target);
 bool isInputCaptured();
 
 //

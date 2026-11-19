@@ -313,24 +313,7 @@ String getClipboardText()
     return result;
 }
 
-void captureInput(void* target)
-{
-    s_input_state.capturedInputTarget = target;
-}
-
-void releaseInput(void* target)
-{
-    if (s_input_state.capturedInputTarget == target) {
-        s_input_state.capturedInputTarget = nullptr;
-    }
-}
-
-bool hasCapturedInput(void* target)
-{
-    return s_input_state.capturedInputTarget == target;
-}
-
 bool isInputCaptured()
 {
-    return s_input_state.capturedInputTarget != nullptr;
+    return s_input_state.m_text_input_target.has_value();
 }

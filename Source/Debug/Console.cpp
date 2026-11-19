@@ -106,7 +106,7 @@ void Console::update_and_render(float delta_time)
         }
     }
 
-    if (!isInputCaptured() || hasCapturedInput(&m_input)) {
+    if (!isInputCaptured() || m_input.has_captured_input()) {
         // Show/hide the console
         if (keyJustPressed(SDLK_BACKQUOTE)) {
             if (modifierKeyIsPressed(ModifierKey::Ctrl)) {
@@ -136,12 +136,12 @@ void Console::update_and_render(float delta_time)
     // Maybe this is a terrible idea? Not sure, but we'll see.
     // - Sam, 16/01/2020
     if (m_current_height > 0) {
-        captureInput(&m_input);
+        m_input.capture_input();
     } else {
-        releaseInput(&m_input);
+        m_input.release_input();
     }
 
-    if (hasCapturedInput(&m_input)) {
+    if (m_input.has_captured_input()) {
         if (UI::updateTextInput(&m_input)) {
             handle_command(m_input.text());
             scrollToBottom = true;

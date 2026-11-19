@@ -876,7 +876,7 @@ bool putTextInput(TextInput* textInput, Rect2I bounds, TextInputStyle* style, Re
     // Capture the input focus if we just clicked on this TextInput
     if (justClickedOnUI(bounds)) {
         markMouseInputHandled();
-        captureInput(textInput);
+        textInput->capture_input();
         textInput->caretFlashCounter = 0;
     }
 

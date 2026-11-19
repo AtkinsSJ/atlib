@@ -7,6 +7,7 @@
 #pragma once
 
 #include <Gfx/Forward.h>
+#include <Input/TextInputTarget.h>
 #include <UI/Forward.h>
 #include <Util/Basic.h>
 #include <Util/Forward.h>
@@ -19,9 +20,10 @@ struct TextInputPos {
     s32 glyphPos;
 };
 
-struct TextInput {
+struct TextInput final : public TextInputTarget {
 public:
     TextInput(Allocator&, s32 length, String character_blacklist = ""_s);
+    virtual ~TextInput() override;
 
     Span<char> buffer;
 
